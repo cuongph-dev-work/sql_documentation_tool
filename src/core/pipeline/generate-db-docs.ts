@@ -32,24 +32,55 @@ export async function generateDbDocs(options: GenerateDbDocsOptions): Promise<Da
     });
   }
 
+  const exporters: Array<{
+    format: OutputFormat;
+    fn: () => Promise<void>;
+  }> = [];
+
   if (options.output.formats.includes("excel")) {
-    await exportExcelDictionary(doc, { outDir: options.outDir });
+    exporters.push({
+      format: "excel",
+      fn: () => exportExcelDictionary(doc, { outDir: options.outDir }),
+    });
   }
 
   if (options.output.formats.includes("diagram")) {
-    await exportMermaidDiagram(doc, { outDir: options.outDir });
+    exporters.push({
+      format: "diagram",
+      fn: () => exportMermaidDiagram(doc, { outDir: options.outDir }),
+    });
   }
 
   if (options.output.formats.includes("markdown")) {
-    await exportMarkdownDocs(doc, { outDir: options.outDir });
+    exporters.push({
+      format: "markdown",
+      fn: () => exportMarkdownDocs(doc, { outDir: options.outDir }),
+    });
   }
 
   if (options.output.formats.includes("html")) {
-    await exportHtmlDocs(doc, { outDir: options.outDir });
+    exporters.push({
+      format: "html",
+      fn: () => exportHtmlDocs(doc, { outDir: options.outDir }),
+    });
   }
 
   if (options.output.formats.includes("word")) {
-    await exportWordDocument(doc, { outDir: options.outDir });
+    exporters.push({
+      format: "word",
+      fn: () => exportWordDocument(doc, { outDir: options.outDir }),
+    });
+  }
+
+  for (const { format, fn } of exporters) {
+    try {
+      await fn();
+    } catch (err) {
+      console.error(
+        `[dbdocgen] Failed to export ${format} docs:`,
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
 
   return doc;

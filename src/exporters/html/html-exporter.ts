@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DatabaseDoc, TableDoc } from "../../core/model/database-doc";
+import { sanitizeFilename } from "../../core/sanitize";
 
 export type HtmlExportOptions = {
   outDir: string;
@@ -10,22 +11,29 @@ export async function exportHtmlDocs(
   doc: DatabaseDoc,
   options: HtmlExportOptions,
 ): Promise<void> {
-  await mkdir(options.outDir, { recursive: true });
-  const htmlDir = join(options.outDir, "html");
-  const tablesDir = join(htmlDir, "tables");
-  await mkdir(tablesDir, { recursive: true });
+  try {
+    await mkdir(options.outDir, { recursive: true });
+    const htmlDir = join(options.outDir, "html");
+    const tablesDir = join(htmlDir, "tables");
+    await mkdir(tablesDir, { recursive: true });
 
-  await writeFile(
-    join(htmlDir, "index.html"),
-    renderIndexPage(doc),
-    "utf8",
-  );
-
-  for (const table of doc.tables) {
     await writeFile(
-      join(tablesDir, `${table.name}.html`),
-      renderTablePage(table, doc),
+      join(htmlDir, "index.html"),
+      renderIndexPage(doc),
       "utf8",
+    );
+
+    for (const table of doc.tables) {
+      await writeFile(
+        join(tablesDir, `${sanitizeFilename(table.name)}.html`),
+        renderTablePage(table, doc),
+        "utf8",
+      );
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to export HTML docs: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 }
@@ -81,7 +89,8 @@ function renderIndexPage(doc: DatabaseDoc): string {
   let tableRows = "";
   for (const table of doc.tables) {
     const desc = esc(table.description?.value ?? table.comment ?? "");
-    tableRows += `      <tr><td><a href="tables/${esc(table.name)}.html">${esc(table.name)}</a></td><td>${desc}</td></tr>\n`;
+    const filename = sanitizeFilename(table.name);
+    tableRows += `      <tr><td><a href="tables/${encodeURIComponent(filename)}.html">${esc(table.name)}</a></td><td>${desc}</td></tr>\n`;
   }
 
   const body = `

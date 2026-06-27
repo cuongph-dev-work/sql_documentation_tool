@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DatabaseDoc, TableDoc } from "../../core/model/database-doc";
+import { sanitizeFilename } from "../../core/sanitize";
 
 export type MarkdownExportOptions = {
   outDir: string;
@@ -10,21 +11,28 @@ export async function exportMarkdownDocs(
   doc: DatabaseDoc,
   options: MarkdownExportOptions,
 ): Promise<void> {
-  await mkdir(options.outDir, { recursive: true });
-  const tablesDir = join(options.outDir, "tables");
-  await mkdir(tablesDir, { recursive: true });
+  try {
+    await mkdir(options.outDir, { recursive: true });
+    const tablesDir = join(options.outDir, "tables");
+    await mkdir(tablesDir, { recursive: true });
 
-  await writeFile(
-    join(options.outDir, "DATABASE.md"),
-    renderOverview(doc),
-    "utf8",
-  );
-
-  for (const table of doc.tables) {
     await writeFile(
-      join(tablesDir, `${table.name}.md`),
-      renderTableDoc(table, doc),
+      join(options.outDir, "DATABASE.md"),
+      renderOverview(doc),
       "utf8",
+    );
+
+    for (const table of doc.tables) {
+      await writeFile(
+        join(tablesDir, `${sanitizeFilename(table.name)}.md`),
+        renderTableDoc(table, doc),
+        "utf8",
+      );
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to export Markdown docs: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 }
@@ -173,5 +181,5 @@ function renderTableDoc(table: TableDoc, doc: DatabaseDoc): string {
 }
 
 function escapeMd(text: string): string {
-  return text.replace(/\|/g, "\\|");
+  return text.replace(/([|*_`\[\]<>#~\\])/g, "\\$1");
 }
