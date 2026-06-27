@@ -15,3 +15,6 @@ export type {
 } from "./core/model/database-doc";
 
 export { databaseDocSchema } from "./core/model/validation";
+
+export { loadConfig } from "./core/config/loader";
+export type { DbdocgenConfig, OutputFormat } from "./core/config/schema";
