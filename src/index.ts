@@ -18,3 +18,5 @@ export { databaseDocSchema } from "./core/model/validation";
 
 export { loadConfig } from "./core/config/loader";
 export type { DbdocgenConfig, OutputFormat } from "./core/config/schema";
+
+export { parseSqlSchema } from "./parsers/sql/sql-parser";
