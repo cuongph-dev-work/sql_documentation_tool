@@ -31,4 +31,4 @@ export { generateDbDocs } from "./core/pipeline/generate-db-docs";
 export type { GenerateDbDocsOptions } from "./core/pipeline/generate-db-docs";
 
 export { scanSourceContext } from "./source-scanner/scanner";
-export type { ScanSourceContextOptions, SourceContext, SourceContextFile } from "./source-scanner/scanner";
+export type { ScanSourceContextOptions, SourceChunk, SourceContext, SourceContextFile } from "./source-scanner/scanner";

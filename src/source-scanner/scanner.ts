@@ -36,7 +36,12 @@ export async function scanSourceContext(options: ScanSourceContextOptions): Prom
   const files: SourceContextFile[] = [];
 
   for (const path of paths) {
-    const content = await readFile(path, "utf8");
+    let content: string;
+    try {
+      content = await readFile(path, "utf8");
+    } catch {
+      continue;
+    }
     const relatedTables = options.tableNames.filter((tableName) => isLikelyRelatedToTable(path, content, tableName));
     if (relatedTables.length === 0) continue;
     files.push({
