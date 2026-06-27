@@ -10,15 +10,15 @@ export type ParseSqlSchemaOptions = {
 };
 
 export async function parseSqlSchema(sql: string, options: ParseSqlSchemaOptions = {}): Promise<DatabaseDoc> {
-  const dialect = options.dialect ?? "unknown";
+  const dialect = options.dialect;
   const parser = new Parser();
 
   try {
     const ast = parser.astify(sql, { database: mapDialect(dialect) });
-    return normalizeSqlAst(ast, dialect);
+    return normalizeSqlAst(ast, dialect ?? "unknown");
   } catch (error) {
     return {
-      dialect,
+      dialect: dialect ?? "unknown",
       tables: [],
       relationships: [],
       indexes: [],
@@ -27,7 +27,7 @@ export async function parseSqlSchema(sql: string, options: ParseSqlSchemaOptions
   }
 }
 
-function mapDialect(dialect: DatabaseDialect): "postgresql" | "mysql" | undefined {
+function mapDialect(dialect?: DatabaseDialect): "postgresql" | "mysql" | undefined {
   if (dialect === "postgres") return "postgresql";
   if (dialect === "mysql" || dialect === "mariadb") return "mysql";
   return undefined;

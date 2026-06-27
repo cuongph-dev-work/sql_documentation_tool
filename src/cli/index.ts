@@ -2,7 +2,7 @@
 import { Command } from "commander";
 import { loadConfig } from "../core/config/loader";
 import { generateDbDocs } from "../core/pipeline/generate-db-docs";
-import type { OutputFormat } from "../core/config/schema";
+import { outputFormatSchema, type OutputFormat } from "../core/config/schema";
 
 const program = new Command();
 
@@ -57,5 +57,15 @@ program.parseAsync().catch((error: unknown) => {
 
 function parseFormats(value?: string): OutputFormat[] | undefined {
   if (!value) return undefined;
-  return value.split(",").map((item) => item.trim()) as OutputFormat[];
+  const items = value.split(",").map((item) => item.trim());
+  const valid: OutputFormat[] = [];
+  for (const item of items) {
+    const parsed = outputFormatSchema.safeParse(item);
+    if (parsed.success) {
+      valid.push(parsed.data);
+    } else {
+      console.warn(`Warning: Unrecognized format "${item}" — must be one of: ${outputFormatSchema.options.join(", ")}`);
+    }
+  }
+  return valid.length > 0 ? valid : undefined;
 }
