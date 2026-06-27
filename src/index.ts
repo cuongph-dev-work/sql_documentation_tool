@@ -20,3 +20,6 @@ export { loadConfig } from "./core/config/loader";
 export type { DbdocgenConfig, OutputFormat } from "./core/config/schema";
 
 export { parseSqlSchema } from "./parsers/sql/sql-parser";
+
+export { exportExcelDictionary } from "./exporters/excel/excel-exporter";
+export { exportMermaidDiagram, renderMermaid } from "./exporters/diagram/mermaid-exporter";
