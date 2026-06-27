@@ -1,4 +1,12 @@
-import type { DatabaseDialect, DatabaseDoc, IndexDoc, RelationshipDoc, TableDoc } from "../../core/model/database-doc";
+import type {
+  DatabaseDialect,
+  DatabaseDoc,
+  IndexDoc,
+  RelationshipDoc,
+  ReviewTodo,
+  TableDoc,
+  WarningDoc
+} from "../../core/model/database-doc";
 
 type AnyAst = Record<string, unknown>;
 
@@ -7,12 +15,15 @@ export function normalizeSqlAst(ast: unknown, dialect: DatabaseDialect): Databas
   const tables: TableDoc[] = [];
   const indexes: IndexDoc[] = [];
   const relationships: RelationshipDoc[] = [];
+  const warnings: WarningDoc[] = [];
 
   for (const statement of statements as AnyAst[]) {
     if (statement.type === "create" && statement.keyword === "table") {
       const table = normalizeCreateTable(statement);
       tables.push(table);
-      relationships.push(...relationshipsFromTable(table));
+      const result = relationshipsFromTable(table);
+      relationships.push(...result.relationships);
+      warnings.push(...result.warnings);
     }
 
     if (statement.type === "create" && statement.keyword === "index") {
@@ -30,7 +41,7 @@ export function normalizeSqlAst(ast: unknown, dialect: DatabaseDialect): Databas
     tables,
     relationships,
     indexes,
-    warnings: []
+    warnings
   };
 }
 
@@ -100,18 +111,54 @@ function normalizeCreateIndex(statement: AnyAst): IndexDoc {
   };
 }
 
-function relationshipsFromTable(table: TableDoc): RelationshipDoc[] {
-  return table.foreignKeys.flatMap((foreignKey) =>
-    foreignKey.columns.map((column, index) => ({
-      fromTable: table.name,
-      fromColumn: column,
-      toTable: foreignKey.referencedTable,
-      toColumn: foreignKey.referencedColumns[index] ?? foreignKey.referencedColumns[0] ?? "id",
-      constraintName: foreignKey.name,
-      source: "schema" as const,
-      needsReview: false
-    }))
-  );
+function relationshipsFromTable(table: TableDoc): {
+  relationships: RelationshipDoc[];
+  warnings: WarningDoc[];
+} {
+  const relationships: RelationshipDoc[] = [];
+  const warnings: WarningDoc[] = [];
+
+  for (const foreignKey of table.foreignKeys) {
+    for (let index = 0; index < foreignKey.columns.length; index++) {
+      const column = foreignKey.columns[index];
+      let toColumn: string;
+      let needsReview = false;
+
+      if (foreignKey.referencedColumns[index]) {
+        toColumn = foreignKey.referencedColumns[index];
+      } else {
+        toColumn = foreignKey.referencedColumns[0] ?? column;
+        needsReview = true;
+
+        table.reviewTodos.push({
+          type: "relationship",
+          target: `${table.name}.${column} → ${foreignKey.referencedTable}`,
+          issue: `Foreign key column "${column}" references table "${foreignKey.referencedTable}" but the referenced column at position ${index} is missing from the schema. Using "${toColumn}" as a best-guess fallback.`,
+          suggestion: `Verify the referenced column name in table "${foreignKey.referencedTable}" and update manually.`,
+          source: "schema"
+        });
+
+        warnings.push({
+          code: "FK_REFERENCED_COLUMN_GUESS",
+          message: `In table "${table.name}", foreign key column "${column}" references "${foreignKey.referencedTable}" but the referenced column at index ${index} is missing. Falling back to "${toColumn}".`,
+          target: `${table.name}.${column}`,
+          severity: "warning"
+        });
+      }
+
+      relationships.push({
+        fromTable: table.name,
+        fromColumn: column,
+        toTable: foreignKey.referencedTable,
+        toColumn,
+        constraintName: foreignKey.name,
+        source: "schema" as const,
+        needsReview
+      });
+    }
+  }
+
+  return { relationships, warnings };
 }
 
 function extractTableName(value: unknown): string {
@@ -192,5 +239,5 @@ function extractDefaultFromDef(def: AnyAst): string | undefined {
     return String(defaultVal.value);
   }
   if (typeof defaultVal.value === "string") return defaultVal.value;
-  return String(defaultVal.value ?? "");
+  return undefined;
 }
