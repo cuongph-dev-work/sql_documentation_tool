@@ -44,7 +44,17 @@ program
       schema: config.schema,
       outDir: config.outDir,
       output: { formats: config.output.formats },
-      ai: { enabled: config.ai.enabled }
+      ai: {
+        enabled: config.ai.enabled,
+        provider: config.ai.provider,
+        baseURL: config.ai.baseURL,
+        apiKeyEnv: config.ai.apiKeyEnv,
+        model: config.ai.model,
+        temperature: config.ai.temperature,
+        maxTokens: config.ai.maxTokens,
+        rulesDir: config.ai.rulesDir
+      },
+      context: config.context
     });
 
     console.log(`Generated database documentation in ${config.outDir}`);
