@@ -14,7 +14,18 @@ export async function exportMermaidDiagram(doc: DatabaseDoc, options: DiagramExp
 export function renderMermaid(doc: DatabaseDoc): string {
   const lines = ["erDiagram"];
 
+  // Warnings as Mermaid comments
+  for (const warning of doc.warnings) {
+    const target = warning.target ? ` (${warning.target})` : "";
+    lines.push(`  %% WARNING [${warning.severity}] ${warning.code}${target}: ${warning.message}`);
+  }
+
   for (const table of doc.tables) {
+    // Table review TODOs as comments
+    for (const todo of table.reviewTodos) {
+      lines.push(`  %% TODO [${todo.type}] ${todo.target}: ${todo.issue}`);
+    }
+
     lines.push(`  ${table.name} {`);
     for (const column of table.columns) {
       const markers = [column.isPrimaryKey ? "PK" : "", column.isForeignKey ? "FK" : ""].filter(Boolean).join(" ");
