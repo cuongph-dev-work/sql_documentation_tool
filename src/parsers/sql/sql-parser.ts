@@ -1,4 +1,6 @@
-import { Parser } from "node-sql-parser";
+import nodeSqlParser from "node-sql-parser";
+
+const { Parser } = nodeSqlParser;
 import type { DatabaseDialect, DatabaseDoc } from "../../core/model/database-doc";
 import { createWarning } from "../../core/warnings";
 import { normalizeSqlAst } from "./sql-normalizer";

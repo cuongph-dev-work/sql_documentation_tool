@@ -23,3 +23,6 @@ export { parseSqlSchema } from "./parsers/sql/sql-parser";
 
 export { exportExcelDictionary } from "./exporters/excel/excel-exporter";
 export { exportMermaidDiagram, renderMermaid } from "./exporters/diagram/mermaid-exporter";
+
+export { generateDbDocs } from "./core/pipeline/generate-db-docs";
+export type { GenerateDbDocsOptions } from "./core/pipeline/generate-db-docs";
