@@ -10,9 +10,11 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
+    "rootDir": "src",
+    "ignoreDeprecations": "6.0",
     "outDir": "dist",
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "tests", "fixtures"],
+  "include": ["src"],
   "exclude": ["dist", "node_modules"]
 }
