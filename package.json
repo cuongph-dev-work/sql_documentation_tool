@@ -1,10 +1,41 @@
 {
-  "name": "dbdocgen",
+  "name": "@cuongph.dev/dbdocgen",
   "version": "0.1.0",
-  "description": "Generate database documentation from SQL schema files.",
+  "description": "Generate database documentation from SQL schema files — Excel, Markdown, HTML, Mermaid ER diagram, and Word (A5:SQL-style layout)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cuongph-dev-work/sql_documentation_tool.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cuongph-dev-work/sql_documentation_tool/issues"
+  },
+  "homepage": "https://github.com/cuongph-dev-work/sql_documentation_tool#readme",
+  "author": "cuongph-dev-work",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "database",
+    "documentation",
+    "sql",
+    "schema",
+    "ddl",
+    "excel",
+    "markdown",
+    "mermaid",
+    "erd",
+    "data-dictionary",
+    "mysql",
+    "postgresql",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
-    "dbdocgen": "./dist/cli/index.js"
+    "dbdocgen": "dist/cli/index.js"
   },
   "exports": {
     ".": {
@@ -14,10 +45,14 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
+    "prepare": "npm run build && chmod +x dist/cli/index.js",
+    "prepublishOnly": "npm test && npm run typecheck",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -25,17 +60,12 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   },
-  "engines": {
-    "node": ">=20"
-  },
   "dependencies": {
     "commander": "^15.0.0",
     "cosmiconfig": "^9.0.2",
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
-    "fast-glob": "^3.3.3",
     "node-sql-parser": "^5.4.0",
-    "openai": "^6.45.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

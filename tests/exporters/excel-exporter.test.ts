@@ -52,7 +52,7 @@ describe("exportExcelDictionary", () => {
     const overview = workbook.worksheets[0]!;
     expect(overview.getCell("B9").value).toMatchObject({
       text: "users",
-      hyperlink: expect.stringContaining("users")
+      hyperlink: "users!A1"
     });
 
     const tableSheet = workbook.worksheets[1]!;

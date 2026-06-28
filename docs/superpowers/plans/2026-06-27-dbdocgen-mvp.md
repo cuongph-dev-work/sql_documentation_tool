@@ -131,8 +131,7 @@ Future roadmap items:
 ## Task 12: Release Readiness ✅
 
 - [x] README.md — documents install, CLI usage, config, output structure, programmatic API
-- [x] SPEC.md — updated to reflect descoped AI/source-scanner features
-- [x] TECHSTACK.md — updated to reflect current stack (no AI deps)
+- [x] README.md — full project documentation (replaces SPEC.md and TECHSTACK.md)
 - [x] LICENSE (MIT)
 - [x] `.github/workflows/ci.yml`
 - [x] Final verification: `pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm build`

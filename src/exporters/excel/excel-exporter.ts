@@ -84,6 +84,8 @@ function addOverviewSheet(
     const row = sheet.addRow([field, value]);
     styleMetaRow(row);
     applyBorderToRow(row, 2);
+    row.getCell(1).alignment = { vertical: "middle", indent: 1 };
+    row.getCell(2).alignment = { vertical: "middle", indent: 1 };
   }
 
   sheet.addRow([]);
@@ -143,7 +145,7 @@ function addOverviewSheet(
   }
 
   sheet.columns = [
-    { width: 5 },
+    { width: 20 },
     { width: 28 },
     { width: 30 },
     { width: 9 },
@@ -304,13 +306,20 @@ function buildSheetName(
   return base;
 }
 
+function sheetLocation(sheetName: string, cellRef = "A1"): string {
+  if (/^[A-Za-z0-9_]+$/.test(sheetName)) {
+    return `${sheetName}!${cellRef}`;
+  }
+  const escaped = sheetName.replace(/'/g, "''");
+  return `'${escaped}'!${cellRef}`;
+}
+
 function setHyperlink(
   cell: ExcelJS.Cell,
   text: string,
   sheetName: string
 ): void {
-  const safe = sheetName.replace(/'/g, "''");
-  cell.value = { text, hyperlink: `#'${safe}'!A1` };
+  cell.value = { text, hyperlink: sheetLocation(sheetName) };
 }
 
 function solidFill(argb: string): ExcelJS.Fill {

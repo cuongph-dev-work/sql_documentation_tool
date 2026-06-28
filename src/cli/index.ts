@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { readFile, writeFile, mkdir, rm, readdir } from "node:fs/promises";
+import { readFile, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadConfig } from "../core/config/loader";
