@@ -1,6 +1,6 @@
 {
   "name": "@cuongph.dev/dbdocgen",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate database documentation from SQL schema files — Excel, Markdown, HTML, Mermaid ER diagram, and Word (A5:SQL-style layout)",
   "repository": {
     "type": "git",
