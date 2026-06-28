@@ -412,6 +412,8 @@ pnpm lint             # eslint
 pnpm format           # prettier
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide on contributing and publishing to npm.
+
 ## Limitations
 
 | Limitation | Notes |
