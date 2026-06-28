@@ -12,7 +12,7 @@ import {
 import {
   getErDiagramMermaid
 } from "../diagram/er-diagram-embed";
-import { renderErDiagramPng } from "../diagram/er-diagram-svg";
+import { renderErDiagramPng, fitErDiagramToBox } from "../diagram/er-diagram-svg";
 
 const COLOR = {
   headerBg: "FF4472C4",
@@ -195,17 +195,18 @@ async function addErDiagramSheet(
   let nextRow = 3;
 
   try {
-    const png = await renderErDiagramPng(doc);
+    const { buffer: png, width, height } = await renderErDiagramPng(doc);
     await writeFile(join(outDir, "er_diagram.png"), png);
     const imageId = workbook.addImage({
       base64: png.toString("base64"),
       extension: "png"
     });
+    const fitted = fitErDiagramToBox(width, height, 1100, 1200);
     sheet.addImage(imageId, {
       tl: { col: 0, row: 2 },
-      ext: { width: 900, height: Math.min(650, 120 + doc.tables.length * 12) }
+      ext: fitted
     });
-    nextRow = Math.max(28, Math.ceil(doc.tables.length / 4) * 8 + 6);
+    nextRow = Math.max(28, Math.ceil(fitted.height / 18) + 4);
   } catch {
     sheet.getCell(3, 1).value = labels.viewErDiagram;
     nextRow = 5;

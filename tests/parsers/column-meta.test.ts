@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractCheckBounds,
+  extractColumnConstraintNotes,
   normalizeColumnType
 } from "../../src/parsers/sql/column-meta";
 
@@ -41,5 +42,40 @@ describe("column-meta", () => {
       minValue: "0",
       maxValue: "150"
     });
+  });
+
+  it("extracts auto_increment, generated, and enum notes", () => {
+    expect(
+      extractColumnConstraintNotes({
+        auto_increment: "auto_increment"
+      })
+    ).toEqual(["AUTO_INCREMENT"]);
+
+    expect(
+      extractColumnConstraintNotes({
+        generated: {
+          storage_type: "stored",
+          expr: {
+            type: "number",
+            value: 0
+          }
+        }
+      })
+    ).toEqual(["GENERATED ALWAYS STORED: 0"]);
+
+    expect(
+      extractColumnConstraintNotes({
+        definition: {
+          dataType: "ENUM",
+          expr: {
+            type: "expr_list",
+            value: [
+              { type: "single_quote_string", value: "queued" },
+              { type: "single_quote_string", value: "done" }
+            ]
+          }
+        }
+      })
+    ).toEqual(["ENUM: queued, done"]);
   });
 });

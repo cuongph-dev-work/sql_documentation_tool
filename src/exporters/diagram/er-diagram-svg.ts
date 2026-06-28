@@ -2,11 +2,16 @@ import type { DatabaseDoc, TableDoc } from "../../core/model/database-doc";
 import {
   HEADER_H,
   LINE_H,
-  MAX_COLS_SHOWN,
+  getVisibleErColumns,
   layoutErDiagram,
-  measureTableBox,
   type Box
 } from "./er-diagram-layout";
+
+export type ErDiagramPng = {
+  buffer: Buffer;
+  width: number;
+  height: number;
+};
 
 /** Render ER diagram SVG using ELK orthogonal layout (for PNG embed in Excel/Word). */
 export async function renderErDiagramSvg(doc: DatabaseDoc): Promise<string> {
@@ -16,7 +21,30 @@ export async function renderErDiagramSvg(doc: DatabaseDoc): Promise<string> {
   }
 
   const layout = await layoutErDiagram(doc);
-  const { boxes, edges, compact, width, height } = layout;
+  return buildErDiagramSvg(doc, layout);
+}
+
+export async function renderErDiagramPng(doc: DatabaseDoc): Promise<ErDiagramPng> {
+  const tables = doc.tables;
+  if (tables.length === 0) {
+    const svg = await renderErDiagramSvg(doc);
+    const sharp = (await import("sharp")).default;
+    const buffer = await sharp(Buffer.from(svg)).png().toBuffer();
+    return { buffer, width: 400, height: 80 };
+  }
+
+  const layout = await layoutErDiagram(doc);
+  const svg = buildErDiagramSvg(doc, layout);
+  const sharp = (await import("sharp")).default;
+  const buffer = await sharp(Buffer.from(svg)).png().toBuffer();
+  return { buffer, width: layout.width, height: layout.height };
+}
+
+function buildErDiagramSvg(
+  doc: DatabaseDoc,
+  layout: Awaited<ReturnType<typeof layoutErDiagram>>
+): string {
+  const { boxes, edges, width, height } = layout;
 
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" font-family="Arial,sans-serif" font-size="11">`,
@@ -35,19 +63,13 @@ export async function renderErDiagramSvg(doc: DatabaseDoc): Promise<string> {
 
   parts.push(`</g><g class="nodes">`);
 
-  for (const table of tables) {
+  for (const table of doc.tables) {
     const box = boxes.get(table.name)!;
-    parts.push(...renderTableBox(table, box, compact));
+    parts.push(...renderTableBox(table, box));
   }
 
   parts.push("</g></svg>");
   return parts.join("");
-}
-
-export async function renderErDiagramPng(doc: DatabaseDoc): Promise<Buffer> {
-  const svg = await renderErDiagramSvg(doc);
-  const sharp = (await import("sharp")).default;
-  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 function pointsToPath(points: Array<{ x: number; y: number }>): string {
@@ -56,7 +78,7 @@ function pointsToPath(points: Array<{ x: number; y: number }>): string {
     .join(" ");
 }
 
-function renderTableBox(table: TableDoc, box: Box, compact: boolean): string[] {
+function renderTableBox(table: TableDoc, box: Box): string[] {
   const parts: string[] = [
     `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="#f8fafc" stroke="#4472c4" stroke-width="1.5" rx="4"/>`,
     `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${HEADER_H}" fill="#4472c4" rx="4"/>`,
@@ -64,16 +86,8 @@ function renderTableBox(table: TableDoc, box: Box, compact: boolean): string[] {
     `<text x="${box.x + 8}" y="${box.y + 18}" fill="#ffffff" font-weight="bold">${escapeXml(table.name)}</text>`
   ];
 
-  if (compact) {
-    const summary = `${table.columns.length} cols · ${table.foreignKeys.length} FK`;
-    parts.push(
-      `<text x="${box.x + 8}" y="${box.y + HEADER_H + 16}" fill="#555555">${escapeXml(summary)}</text>`
-    );
-    return parts;
-  }
-
   let cy = box.y + HEADER_H + 14;
-  const visible = table.columns.slice(0, MAX_COLS_SHOWN);
+  const visible = getVisibleErColumns(table);
   for (const col of visible) {
     const marker = col.isPrimaryKey ? " PK" : col.isForeignKey ? " FK" : "";
     parts.push(
@@ -81,9 +95,9 @@ function renderTableBox(table: TableDoc, box: Box, compact: boolean): string[] {
     );
     cy += LINE_H;
   }
-  if (table.columns.length > MAX_COLS_SHOWN) {
+  if (table.columns.length > visible.length) {
     parts.push(
-      `<text x="${box.x + 8}" y="${cy}" fill="#666666">... +${table.columns.length - MAX_COLS_SHOWN} more</text>`
+      `<text x="${box.x + 8}" y="${cy}" fill="#666666">... +${table.columns.length - visible.length} more</text>`
     );
   }
 
@@ -100,4 +114,17 @@ function escapeXml(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+export function fitErDiagramToBox(
+  width: number,
+  height: number,
+  maxWidth: number,
+  maxHeight: number
+): { width: number; height: number } {
+  const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale))
+  };
 }

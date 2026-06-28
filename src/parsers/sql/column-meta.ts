@@ -67,6 +67,66 @@ export function hasColumnUnique(definition: AnyAst): boolean {
   return definition.unique === "unique" || definition.unique === true;
 }
 
+export function extractColumnConstraintNotes(definition: AnyAst): string[] {
+  const notes: string[] = [];
+
+  if (definition.auto_increment === "auto_increment" || definition.auto_increment === true) {
+    notes.push("AUTO_INCREMENT");
+  }
+
+  if (definition.on_update) {
+    notes.push(`ON UPDATE ${formatOnUpdate(definition.on_update)}`);
+  }
+
+  const generated = definition.generated as AnyAst | undefined;
+  if (generated) {
+    const storage = String(generated.storage_type ?? "virtual").toUpperCase();
+    const expression = stringifyGeneratedExpression(generated.expr);
+    notes.push(
+      expression
+        ? `GENERATED ALWAYS ${storage}: ${expression}`
+        : `GENERATED ALWAYS ${storage}`
+    );
+  }
+
+  const enumValues = extractEnumValues((definition.definition as AnyAst | undefined)?.expr);
+  if (enumValues.length > 0) {
+    notes.push(`ENUM: ${enumValues.join(", ")}`);
+  }
+
+  return notes;
+}
+
+function extractEnumValues(expr: unknown): string[] {
+  if (!expr || typeof expr !== "object") return [];
+  const object = expr as AnyAst;
+  if (object.type !== "expr_list" || !Array.isArray(object.value)) return [];
+  return object.value
+    .map((item) => {
+      if (!item || typeof item !== "object") return "";
+      const entry = item as AnyAst;
+      return entry.value !== undefined ? String(entry.value) : "";
+    })
+    .filter(Boolean);
+}
+
+function formatOnUpdate(value: unknown): string {
+  if (!value || typeof value !== "object") return String(value ?? "");
+  const object = value as AnyAst;
+  if (object.type === "function" && object.name) {
+    const name = object.name as AnyAst;
+    const parts = Array.isArray(name.name) ? (name.name as AnyAst[]) : [];
+    return parts.map((part) => String(part.value ?? "")).join("") || "CURRENT_TIMESTAMP";
+  }
+  return formatAstValue(value);
+}
+
+function stringifyGeneratedExpression(expr: unknown): string | undefined {
+  if (!expr || typeof expr !== "object") return undefined;
+  const text = stringifyExpression(expr as AnyAst);
+  return text === "check" ? undefined : text;
+}
+
 export function extractCheckBounds(
   expression: unknown,
   columnName: string

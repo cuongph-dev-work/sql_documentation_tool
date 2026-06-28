@@ -9,6 +9,7 @@ import type {
 import {
   extractCheckBounds,
   extractColumnComment,
+  extractColumnConstraintNotes,
   extractConstraintColumnNames,
   hasColumnUnique,
   normalizeColumnType,
@@ -86,7 +87,7 @@ function normalizeCreateTable(statement: AnyAst): TableDoc {
       ? extractCheckBounds(check.definition, columnName)
       : {};
 
-    const constraintNotes: string[] = [];
+    const constraintNotes: string[] = extractColumnConstraintNotes(definition);
     if (check?.definition) {
       const expression = stringifyCheckDefinition(check.definition);
       if (expression && (!bounds.minValue || !bounds.maxValue)) {

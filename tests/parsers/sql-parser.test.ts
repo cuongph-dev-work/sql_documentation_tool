@@ -61,6 +61,15 @@ describe("parseSqlSchema", () => {
       "id",
       "address_street"
     ]);
+    expect(doc.tables[0]?.columns[0]).toMatchObject({
+      type: "bigint",
+      isPrimaryKey: true,
+      constraintNotes: ["AUTO_INCREMENT"]
+    });
+    expect(doc.tables[0]?.columns[1]).toMatchObject({
+      type: "varchar(128)",
+      size: "128"
+    });
   });
 
   it("auto-detects MySQL dialect when none is provided", async () => {

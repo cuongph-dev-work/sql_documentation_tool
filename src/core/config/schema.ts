@@ -22,7 +22,7 @@ export const outputLanguageSchema = z.enum(["en", "jp"]);
 export const dbdocgenConfigSchema = z.object({
   schema: z.string().default("./schema.sql"),
   dialect: dialectSchema.optional(),
-  outDir: z.string().default("./docs/db"),
+  outDir: z.string().default("./output"),
   output: z
     .object({
       formats: z

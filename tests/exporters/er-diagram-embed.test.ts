@@ -91,9 +91,49 @@ describe("ER diagram embed", () => {
   });
 
   it("renders PNG buffer from SVG", async () => {
-    const png = await renderErDiagramPng(doc);
-    expect(png.length).toBeGreaterThan(100);
-    expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    const { buffer } = await renderErDiagramPng(doc);
+    expect(buffer.length).toBeGreaterThan(100);
+    expect(buffer.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+  });
+
+  it("shows column names even for large schemas", async () => {
+    const tables = Array.from({ length: 20 }, (_, index) => ({
+      name: `table_${index}`,
+      columns: [
+        {
+          name: "id",
+          type: "bigint",
+          nullable: false,
+          isPrimaryKey: true,
+          isForeignKey: false,
+          isUnique: false
+        },
+        {
+          name: "name",
+          type: "varchar(64)",
+          size: "64",
+          nullable: false,
+          isPrimaryKey: false,
+          isForeignKey: false,
+          isUnique: false
+        }
+      ],
+      primaryKeys: ["id"],
+      foreignKeys: [],
+      indexes: [],
+      reviewTodos: []
+    }));
+
+    const svg = await renderErDiagramSvg({
+      dialect: "mysql",
+      tables,
+      relationships: [],
+      indexes: [],
+      warnings: []
+    });
+
+    expect(svg).toContain("id : bigint PK");
+    expect(svg).not.toContain("cols ·");
   });
 
   it("renders HTML page with mermaid class", () => {

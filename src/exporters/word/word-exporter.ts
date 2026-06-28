@@ -22,7 +22,7 @@ import {
   columnDefinitionRow
 } from "../shared/column-definition";
 import { getErDiagramMermaid } from "../diagram/er-diagram-embed";
-import { renderErDiagramPng } from "../diagram/er-diagram-svg";
+import { renderErDiagramPng, fitErDiagramToBox } from "../diagram/er-diagram-svg";
 
 export type WordExportOptions = {
   outDir: string;
@@ -83,17 +83,15 @@ export async function exportWordDocument(
       );
 
       try {
-        const png = await renderErDiagramPng(doc);
+        const { buffer: png, width, height } = await renderErDiagramPng(doc);
         await writeFile(join(options.outDir, "er_diagram.png"), png);
+        const fitted = fitErDiagramToBox(width, height, 620, 900);
         children.push(
           new Paragraph({
             children: [
               new ImageRun({
                 data: png,
-                transformation: {
-                  width: 620,
-                  height: Math.min(480, 160 + doc.tables.length * 10)
-                },
+                transformation: fitted,
                 type: "png"
               })
             ]

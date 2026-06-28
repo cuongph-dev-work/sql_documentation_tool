@@ -46,7 +46,7 @@ dbdocgen init
 dbdocgen generate
 
 # Or pass options directly
-dbdocgen generate --schema ./database/schema.sql --out ./docs/db
+dbdocgen generate --schema ./database/schema.sql --out ./output
 ```
 
 ### Development (from source)
@@ -71,7 +71,7 @@ dbdocgen generate [options]
 | Option | Description |
 | ------ | ----------- |
 | `--schema <path>` | Path to the SQL schema file (default: from config or `./schema.sql`) |
-| `--out <path>` | Output directory (default: `./output/db_doc_gen_{yymmddhhmm}`) |
+| `--out <path>` | Parent output directory (default: `./output`; each run creates `db_doc_gen_{yymmddhhmm}` inside) |
 | `--format <list>` | Comma-separated formats: `excel`, `markdown`, `html`, `diagram`, `word` (default: all) |
 | `--config <path>` | Config file path (default: auto-detected) |
 
@@ -81,6 +81,7 @@ dbdocgen generate [options]
 [dbdocgen] Loading configuration...
 [dbdocgen] Configuration loaded
   schema: ./database/schema.sql
+  outputParent: ./output
   outDir: ./output/db_doc_gen_2606281947
   formats: excel, markdown, html, diagram, word
   language: en
@@ -119,7 +120,7 @@ dbdocgen validate --schema ./database/schema.sql
 Remove the output directory.
 
 ```bash
-dbdocgen clean --out ./docs/db
+dbdocgen clean --out ./output
 ```
 
 ### `config show`
@@ -180,8 +181,7 @@ CLI options override config file values.
 | `dialect` | `string` | auto-detected | SQL dialect hint: `postgres`, `mysql`, `mariadb`, `sqlite`, `mssql` |
 | `output.formats` | `string[]` | all formats | Which output formats to generate |
 | `output.language` | `string` | `"en"` | Label language: `en` or `jp` |
-
-> **Note:** `outDir` is not set in config. Each `generate` run uses `--out` if provided, otherwise a new timestamped directory under `./output/`.
+| `outDir` | `string` | `"./output"` | Parent folder for generated runs (`{outDir}/db_doc_gen_{yymmddhhmm}`) |
 
 ## Output Structure
 

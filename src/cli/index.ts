@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { readFile, writeFile, rm } from "node:fs/promises";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadConfig } from "../core/config/loader";
@@ -8,6 +8,11 @@ import { dbdocgenConfigSchema } from "../core/config/schema";
 import { generateDbDocs } from "../core/pipeline/generate-db-docs";
 import { parseSqlSchema } from "../parsers/sql/sql-parser";
 import { outputFormatSchema, type OutputFormat } from "../core/config/schema";
+import {
+  isOutputRunDir,
+  isOutputRunDirName,
+  resolveGenerateOutDir
+} from "../core/output-path";
 
 const DEFAULT_CONFIG_PATH = "dbdocgen.config.json";
 
@@ -34,6 +39,7 @@ program
 
     const defaultConfig = {
       schema: "./database/schema.sql",
+      outDir: "./output",
       output: {
         formats: ["excel", "markdown", "html", "diagram", "word"],
         language: "en"
@@ -42,7 +48,9 @@ program
 
     await writeFile(configPath, JSON.stringify(defaultConfig, null, 2), "utf8");
     console.log(`Created config at ${configPath}`);
-    console.log("Default generate output directory is ./output/db_doc_gen_{yymmddhhmm} unless you pass --out.");
+    console.log(
+      "Each generate run writes to {outDir}/db_doc_gen_{yymmddhhmm} (outDir defaults to ./output)."
+    );
     console.log("Edit the file to configure your database schema path and output formats.");
   });
 
@@ -94,7 +102,7 @@ program
   .command("generate")
   .description("Generate database documentation")
   .option("--schema <path>", "Path to schema.sql")
-  .option("--out <path>", "Output directory")
+  .option("--out <path>", "Parent output directory (run folder: db_doc_gen_{yymmddhhmm})")
   .option("--format <formats>", "Comma-separated output formats")
   .option("--config <path>", "Config file path")
   .action(async (rawOptions) => {
@@ -109,10 +117,12 @@ program
       }
     });
 
-    const outDir = rawOptions.out ?? createTimestampedOutputDir();
+    const parentOutDir = config.outDir;
+    const outDir = resolveGenerateOutDir(parentOutDir);
 
     console.log("[dbdocgen] Configuration loaded");
     console.log(`  schema: ${config.schema}`);
+    console.log(`  outputParent: ${parentOutDir}`);
     console.log(`  outDir: ${outDir}`);
     console.log(`  formats: ${config.output.formats.join(", ")}`);
     console.log(`  language: ${config.output.language}`);
@@ -201,7 +211,7 @@ program
 program
   .command("clean")
   .description("Clean output directory")
-  .option("--out <path>", "Output directory to clean")
+  .option("--out <path>", "Parent output directory or a specific db_doc_gen_* run folder")
   .option("--config <path>", "Config file path")
   .action(async (rawOptions) => {
     const config = await loadConfig({
@@ -212,14 +222,34 @@ program
       }
     });
 
-    const outDir = resolve(config.outDir);
-    if (!existsSync(outDir)) {
-      console.log(`Output directory ${outDir} does not exist. Nothing to clean.`);
+    const target = resolve(config.outDir);
+
+    if (!existsSync(target)) {
+      console.log(`Output path ${target} does not exist. Nothing to clean.`);
       return;
     }
 
-    console.log(`Cleaning ${outDir}...`);
-    await rm(outDir, { recursive: true, force: true });
+    if (isOutputRunDir(target)) {
+      console.log(`Cleaning ${target}...`);
+      await rm(target, { recursive: true, force: true });
+      console.log("Done.");
+      return;
+    }
+
+    const entries = await readdir(target, { withFileTypes: true });
+    const runDirs = entries.filter(
+      (entry) => entry.isDirectory() && isOutputRunDirName(entry.name)
+    );
+
+    if (runDirs.length === 0) {
+      console.log(`No db_doc_gen_* folders found under ${target}.`);
+      return;
+    }
+
+    console.log(`Cleaning ${runDirs.length} run folder(s) under ${target}...`);
+    for (const entry of runDirs) {
+      await rm(resolve(target, entry.name), { recursive: true, force: true });
+    }
     console.log("Done.");
   });
 
@@ -276,14 +306,4 @@ function parseFormats(value?: string): OutputFormat[] | undefined {
     }
   }
   return valid.length > 0 ? valid : undefined;
-}
-
-function createTimestampedOutputDir(date = new Date()): string {
-  const year = String(date.getFullYear()).slice(-2);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  return `./output/db_doc_gen_${year}${month}${day}${hours}${minutes}`;
 }

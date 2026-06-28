@@ -29,15 +29,32 @@ export function isCompactLayout(tableCount: number): boolean {
   return tableCount >= COMPACT_THRESHOLD;
 }
 
-export function measureTableBox(table: TableDoc, compact: boolean): { w: number; h: number } {
-  if (compact) {
-    return { w: BOX_W, h: HEADER_H + 22 };
-  }
-  const shown = Math.min(table.columns.length, MAX_COLS_SHOWN);
-  const extra = table.columns.length > MAX_COLS_SHOWN ? 1 : 0;
+/** Columns shown in ER boxes: PK/FK first, then others, capped at MAX_COLS_SHOWN. */
+export function getVisibleErColumns(table: TableDoc): TableDoc["columns"] {
+  const prioritized = [
+    ...table.columns.filter((column) => column.isPrimaryKey),
+    ...table.columns.filter(
+      (column) => column.isForeignKey && !column.isPrimaryKey
+    ),
+    ...table.columns.filter(
+      (column) => !column.isPrimaryKey && !column.isForeignKey
+    )
+  ];
+
+  const unique = prioritized.filter(
+    (column, index, columns) =>
+      columns.findIndex((item) => item.name === column.name) === index
+  );
+
+  return unique.slice(0, MAX_COLS_SHOWN);
+}
+
+export function measureTableBox(table: TableDoc, _compact = false): { w: number; h: number } {
+  const visible = getVisibleErColumns(table);
+  const extra = table.columns.length > visible.length ? 1 : 0;
   return {
     w: BOX_W,
-    h: HEADER_H + (shown + extra) * LINE_H + 8
+    h: HEADER_H + (visible.length + extra) * LINE_H + 8
   };
 }
 
