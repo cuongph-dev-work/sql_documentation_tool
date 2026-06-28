@@ -10,11 +10,12 @@ The database schema is the **single source of truth**. All table names, column t
 
 - Parse `schema.sql` (PostgreSQL, MySQL/MariaDB primary support)
 - Export to 5 formats: Excel, Markdown, HTML, Mermaid, Word
-- A5:SQL-style layout: per-table definition tables with metadata headers
-- Excel workbook with **Overview** sheet (summary + hyperlinks) and one sheet per table
+- Excel workbook with **Overview** sheet (summary + hyperlinks), **ER Diagram** sheet, and one sheet per table
+- **ER diagram** embedded in Excel/HTML/Markdown/Word (ELK layout PNG + Mermaid); HTML page with pan/zoom
+- A5:SQL-style **10-column** definition tables (Size, Min, Max, Unique, Notes, …)
 - HTML with **index page** and per-table detail pages (PK/FK highlighting)
 - Localized output labels: English (`en`) and Japanese (`jp`)
-- Timestamped output directory per run (`./output/db_doc_gen_{yymmddhhmm}`)
+- Configurable **output parent folder** (`outDir`); each run creates `{outDir}/db_doc_gen_{yymmddhhmm}`
 - Step-by-step progress logging during generation
 - Config file support via [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig)
 - Programmatic API for integration into CI or custom tooling
@@ -117,11 +118,22 @@ dbdocgen validate --schema ./database/schema.sql
 
 ### `clean`
 
-Remove the output directory.
+Remove generated documentation folders.
 
 ```bash
+# Remove all db_doc_gen_* run folders under the parent directory
 dbdocgen clean --out ./output
+
+# Remove one specific run
+dbdocgen clean --out ./output/db_doc_gen_2606281947
 ```
+
+| Target path | Behavior |
+| ----------- | -------- |
+| Parent dir (e.g. `./output`) | Deletes every `db_doc_gen_*` subdirectory inside |
+| Run dir (e.g. `./output/db_doc_gen_2606281947`) | Deletes that folder only |
+
+Uses `outDir` from config when `--out` is omitted (default parent: `./output`).
 
 ### `config show`
 
@@ -165,12 +177,19 @@ CLI options override config file values.
 ```json
 {
   "schema": "./database/schema.sql",
+  "outDir": "./output",
   "dialect": "mysql",
   "output": {
     "formats": ["excel", "markdown", "html", "diagram", "word"],
     "language": "en"
   }
 }
+```
+
+`outDir` is the **parent folder only**. The CLI always writes into a new timestamped subdirectory:
+
+```
+{outDir}/db_doc_gen_{yymmddhhmm}/
 ```
 
 ### Config fields
@@ -226,9 +245,9 @@ All text exporters (Excel, Markdown, HTML, Word) use the same ten-column definit
 | `age` | | `int` | | Yes | `-` | `0` | `150` | No | CHECK |
 
 - **Size** — length/precision from the column type (e.g. `varchar(128)` → `128`, `numeric(12,2)` → `12,2`)
-- **Min / Max** — extracted from `CHECK` constraints when possible
+- **Min / Max** — extracted from `CHECK` constraints when possible (e.g. `age >= 0 AND age <= 150`)
 - **Unique** — column-level `UNIQUE`, table `UNIQUE` constraints, and `UNIQUE` indexes
-- **Notes** — PK/FK markers, composite unique labels, CHECK expressions, comments
+- **Notes** — PK/FK markers, `AUTO_INCREMENT`, `GENERATED` columns, `ENUM` values, composite `UNIQUE`, `CHECK` text, and other constraint hints
 
 Column headers are localized based on `output.language` (e.g. Japanese: 物理名 | 論理名 | 型 | 桁数 | 必須 | デフォルト値 | 最小値 | 最大値 | 一意 | 備考).
 
@@ -245,8 +264,9 @@ Column headers are localized based on `output.language` (e.g. Japanese: 物理�
 **ER Diagram sheet**
 
 - Title bar with ER diagram heading
-- Embedded PNG preview (ELK layered layout + orthogonal edge routing; also written as `er_diagram.png`)
-- Mermaid source block for copy/paste into Mermaid-compatible tools
+- Embedded PNG preview (**ELK** layered layout + orthogonal routing; table boxes list PK/FK columns first)
+- Full-resolution copy also written as `er_diagram.png` beside the workbook
+- Mermaid source block below the image for copy/paste into Mermaid-compatible tools
 
 **Per-table sheet**
 
@@ -259,7 +279,7 @@ Column headers are localized based on `output.language` (e.g. Japanese: 物理�
 ### HTML layout
 
 - `html/index.html` — summary cards + sortable table list with links to each table and ER diagram
-- `html/er-diagram.html` — interactive Mermaid ER diagram with **pan, zoom, fit, reset** controls
+- `html/er-diagram.html` — interactive Mermaid ER diagram with **pan, zoom, fit, reset** toolbar
 - `html/tables/<name>.html` — metadata, column table, PK/FK row highlighting, back link to index
 
 ### ER diagram embedding
@@ -290,9 +310,10 @@ Set via config or ensure `output.language` is set before generation:
 
 ### Logical names and comments
 
-**Logical Name** and **Notes** columns reflect SQL `COMMENT` annotations from the schema. If your schema has no comments, these fields show `(none)`.
+- **Logical Name** — from SQL `COMMENT` on the column (empty → `(none)`)
+- **Notes** — constraint metadata (PK, FK, `AUTO_INCREMENT`, `CHECK`, …), not the same as logical name
 
-To populate them, add comments in your DDL:
+To populate logical names, add comments in your DDL:
 
 ```sql
 CREATE TABLE users (
@@ -306,9 +327,10 @@ CREATE TABLE users (
 ```ts
 import { generateDbDocs } from "@cuongph.dev/dbdocgen";
 
+// API outDir is the exact run directory (no auto timestamp — create the path yourself if needed)
 const doc = await generateDbDocs({
   schema: "./database/schema.sql",
-  outDir: "./docs/db",
+  outDir: "./output/db_doc_gen_manual",
   dialect: "mysql",          // optional — auto-detected if omitted
   output: {
     formats: ["excel", "markdown", "html", "diagram", "word"],
@@ -373,19 +395,21 @@ schema.sql
     ▼
  Normalized Metadata Model (DatabaseDoc)
     │
-    ├──► Excel Exporter   → database_dictionary.xlsx
-    ├──► Markdown Exporter → tables/*.md
-    ├──► HTML Exporter    → html/index.html + html/tables/*.html
-    ├──► Mermaid Exporter  → er_diagram.mmd
-    └──► Word Exporter     → database_document.docx
+    ├──► Excel Exporter    → database_dictionary.xlsx + er_diagram.png
+    ├──► Markdown Exporter → tables/*.md + ER_DIAGRAM.md
+    ├──► HTML Exporter     → html/index.html + html/er-diagram.html + html/tables/*.html
+    ├──► Mermaid Exporter  → er_diagram.mmd (optional `diagram` format)
+    └──► Word Exporter     → database_document.docx + er_diagram.png
 ```
+
+ER diagram PNG/SVG uses **elkjs** (orthogonal layout). Rasterization uses **sharp**.
 
 ### Metadata model
 
 The internal `DatabaseDoc` structure contains:
 
 - `dialect` — detected SQL dialect
-- `tables[]` — table name, comment, columns, primary keys, foreign keys, indexes
+- `tables[]` — table name, comment, columns (`size`, `minValue`, `maxValue`, `isUnique`, `constraintNotes`, …), PK, FK, indexes
 - `relationships[]` — FK relationships derived from schema
 - `indexes[]` — standalone index definitions
 - `warnings[]` — parser limitations, unsupported syntax
@@ -406,6 +430,8 @@ Schema facts (names, types, constraints) are never modified after parsing.
 | SQL parser | node-sql-parser |
 | Excel | exceljs |
 | Word | docx |
+| ER layout | elkjs |
+| ER PNG | sharp |
 | Tests | vitest |
 | Lint / format | eslint, prettier |
 
@@ -417,15 +443,16 @@ src/
 ├── core/
 │   ├── config/               # Config schema, loader, defaults
 │   ├── model/                # DatabaseDoc types + Zod validation
+│   ├── output-path.ts        # db_doc_gen_* run directory helpers
 │   └── pipeline/             # generateDbDocs orchestration
-├── parsers/sql/              # SQL parser + normalizer
+├── parsers/sql/              # SQL parser, normalizer, column-meta
 ├── exporters/
 │   ├── excel/                # A5-style Excel workbook
 │   ├── markdown/             # Per-table Markdown
 │   ├── html/                 # Index + per-table HTML
-│   ├── diagram/              # Mermaid ER diagram
+│   ├── diagram/              # Mermaid, ELK SVG/PNG, ER embed helpers
 │   ├── word/                 # Word document
-│   └── shared/               # i18n output labels
+│   └── shared/               # i18n labels + A5 column-definition helpers
 └── index.ts                  # Public API barrel
 ```
 
@@ -452,7 +479,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide on contributing and pu
 | Dialect coverage | PostgreSQL and MySQL/MariaDB are primary targets |
 | No incremental gen | Each run regenerates all output files |
 | No web UI | Outputs are static files |
-| Comments required for logical names | Logical Name fields need SQL `COMMENT` annotations |
+| Complex CHECK / ENUM | Simple bounds extracted; complex expressions may appear only in Notes |
+| ER PNG in Excel | Large schemas show up to 6 key columns per table (PK/FK first); use HTML Mermaid for full interactive view |
+| API vs CLI `outDir` | CLI appends `db_doc_gen_*` under parent; API `outDir` is the exact destination path |
 
 ## Roadmap
 
