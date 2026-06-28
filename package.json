@@ -13,7 +13,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/cli/index.ts",
@@ -27,24 +29,24 @@
     "node": ">=20"
   },
   "dependencies": {
-    "commander": "latest",
-    "cosmiconfig": "latest",
-    "docx": "latest",
-    "exceljs": "latest",
-    "fast-glob": "latest",
-    "node-sql-parser": "latest",
-    "openai": "latest",
-    "zod": "latest"
+    "commander": "^15.0.0",
+    "cosmiconfig": "^9.0.2",
+    "docx": "^9.7.1",
+    "exceljs": "^4.4.0",
+    "fast-glob": "^3.3.3",
+    "node-sql-parser": "^5.4.0",
+    "openai": "^6.45.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@typescript-eslint/eslint-plugin": "latest",
-    "@typescript-eslint/parser": "latest",
-    "eslint": "latest",
-    "prettier": "latest",
-    "tsup": "latest",
-    "tsx": "latest",
-    "typescript": "latest",
-    "vitest": "latest"
+    "@types/node": "^26.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
+    "eslint": "^10.5.0",
+    "prettier": "^3.8.5",
+    "tsup": "^8.5.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   }
 }
