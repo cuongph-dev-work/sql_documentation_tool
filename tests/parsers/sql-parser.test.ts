@@ -8,8 +8,12 @@ describe("parseSqlSchema", () => {
     const doc = await parseSqlSchema(sql, { dialect: "postgres" });
 
     expect(doc.tables.map((table) => table.name)).toEqual(["users", "orders"]);
-    expect(doc.tables.find((table) => table.name === "users")?.primaryKeys).toEqual(["id"]);
-    expect(doc.tables.find((table) => table.name === "orders")?.foreignKeys[0]).toMatchObject({
+    expect(
+      doc.tables.find((table) => table.name === "users")?.primaryKeys
+    ).toEqual(["id"]);
+    expect(
+      doc.tables.find((table) => table.name === "orders")?.foreignKeys[0]
+    ).toMatchObject({
       columns: ["user_id"],
       referencedTable: "users",
       referencedColumns: ["id"]
@@ -23,9 +27,12 @@ describe("parseSqlSchema", () => {
   });
 
   it("keeps parser warnings instead of throwing for unsupported statements", async () => {
-    const doc = await parseSqlSchema("CREATE TRIGGER ignored_trigger BEFORE INSERT ON users FOR EACH ROW SELECT 1;", {
-      dialect: "postgres"
-    });
+    const doc = await parseSqlSchema(
+      "CREATE TRIGGER ignored_trigger BEFORE INSERT ON users FOR EACH ROW SELECT 1;",
+      {
+        dialect: "postgres"
+      }
+    );
 
     expect(doc.warnings[0]?.code).toBe("UNSUPPORTED_SQL");
   });

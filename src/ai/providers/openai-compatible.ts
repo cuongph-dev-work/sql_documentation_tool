@@ -13,7 +13,10 @@ export type AiCallOptions = {
   userPrompt: string;
 };
 
-export async function callAiProvider(config: AiProviderConfig, options: AiCallOptions): Promise<string> {
+export async function callAiProvider(
+  config: AiProviderConfig,
+  options: AiCallOptions
+): Promise<string> {
   const client = new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseURL

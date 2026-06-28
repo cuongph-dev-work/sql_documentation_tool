@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-export const outputFormatSchema = z.enum(["excel", "markdown", "html", "diagram", "word"]);
+export const outputFormatSchema = z.enum([
+  "excel",
+  "markdown",
+  "html",
+  "diagram",
+  "word"
+]);
 
 export const dbdocgenConfigSchema = z.object({
   schema: z.string().default("./schema.sql"),
@@ -11,10 +17,26 @@ export const dbdocgenConfigSchema = z.object({
         .object({
           enabled: z.boolean().default(false),
           rootDir: z.string().default("./src"),
-          include: z.array(z.string()).default(["**/*.ts", "**/*.js", "**/*.rb", "**/*.php", "**/*.py", "**/*.java"]),
+          include: z
+            .array(z.string())
+            .default([
+              "**/*.ts",
+              "**/*.js",
+              "**/*.rb",
+              "**/*.php",
+              "**/*.py",
+              "**/*.java"
+            ]),
           exclude: z
             .array(z.string())
-            .default(["**/node_modules/**", "**/dist/**", "**/build/**", "**/.next/**", "**/coverage/**", "**/.git/**"])
+            .default([
+              "**/node_modules/**",
+              "**/dist/**",
+              "**/build/**",
+              "**/.next/**",
+              "**/coverage/**",
+              "**/.git/**"
+            ])
         })
         .default({} as never)
     })
@@ -22,7 +44,9 @@ export const dbdocgenConfigSchema = z.object({
   ai: z
     .object({
       enabled: z.boolean().default(true),
-      provider: z.enum(["9router", "openai", "openai-compatible"]).default("9router"),
+      provider: z
+        .enum(["9router", "openai", "openai-compatible"])
+        .default("9router"),
       baseURL: z.string().optional(),
       apiKeyEnv: z.string().default("NINE_ROUTER_API_KEY"),
       model: z.string().default("openai/gpt-4.1-mini"),
@@ -33,7 +57,9 @@ export const dbdocgenConfigSchema = z.object({
     .default({} as never),
   output: z
     .object({
-      formats: z.array(outputFormatSchema).default(["excel", "markdown", "html", "diagram", "word"]),
+      formats: z
+        .array(outputFormatSchema)
+        .default(["excel", "markdown", "html", "diagram", "word"]),
       language: z.string().default("vi")
     })
     .default({} as never)

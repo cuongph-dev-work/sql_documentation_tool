@@ -8,9 +8,13 @@ import {
   TableCell,
   TableRow,
   TextRun,
-  HeadingLevel,
+  HeadingLevel
 } from "docx";
-import type { DatabaseDoc, TableDoc, ReviewTodo } from "../../core/model/database-doc";
+import type {
+  DatabaseDoc,
+  TableDoc,
+  ReviewTodo
+} from "../../core/model/database-doc";
 
 export type WordExportOptions = {
   outDir: string;
@@ -18,7 +22,7 @@ export type WordExportOptions = {
 
 export async function exportWordDocument(
   doc: DatabaseDoc,
-  options: WordExportOptions,
+  options: WordExportOptions
 ): Promise<void> {
   try {
     await mkdir(options.outDir, { recursive: true });
@@ -29,42 +33,42 @@ export async function exportWordDocument(
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_1,
-        children: [new TextRun("Database Documentation")],
-      }),
+        children: [new TextRun("Database Documentation")]
+      })
     );
 
     // Overview
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Overview")],
-      }),
+        children: [new TextRun("Overview")]
+      })
     );
 
     children.push(
       new Paragraph({
-        children: [new TextRun(`Dialect: ${doc.dialect}`)],
-      }),
+        children: [new TextRun(`Dialect: ${doc.dialect}`)]
+      })
     );
 
     children.push(
       new Paragraph({
-        children: [new TextRun(`Tables: ${doc.tables.length}`)],
-      }),
+        children: [new TextRun(`Tables: ${doc.tables.length}`)]
+      })
     );
 
     children.push(
       new Paragraph({
-        children: [new TextRun(`Relationships: ${doc.relationships.length}`)],
-      }),
+        children: [new TextRun(`Relationships: ${doc.relationships.length}`)]
+      })
     );
 
     // Table List section
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Table List")],
-      }),
+        children: [new TextRun("Table List")]
+      })
     );
 
     if (doc.tables.length > 0) {
@@ -72,13 +76,21 @@ export async function exportWordDocument(
         new TableRow({
           children: [
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: "Table", bold: true })] })],
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: "Table", bold: true })]
+                })
+              ]
             }),
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: "Description", bold: true })] })],
-            }),
-          ],
-        }),
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: "Description", bold: true })]
+                })
+              ]
+            })
+          ]
+        })
       ];
 
       for (const table of doc.tables) {
@@ -86,17 +98,23 @@ export async function exportWordDocument(
           new TableRow({
             children: [
               new TableCell({
-                children: [new Paragraph({ children: [new TextRun(table.name)] })],
+                children: [
+                  new Paragraph({ children: [new TextRun(table.name)] })
+                ]
               }),
               new TableCell({
                 children: [
                   new Paragraph({
-                    children: [new TextRun(table.description?.value ?? table.comment ?? "")],
-                  }),
-                ],
-              }),
-            ],
-          }),
+                    children: [
+                      new TextRun(
+                        table.description?.value ?? table.comment ?? ""
+                      )
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
         );
       }
 
@@ -112,8 +130,8 @@ export async function exportWordDocument(
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Relationships")],
-      }),
+        children: [new TextRun("Relationships")]
+      })
     );
 
     if (doc.relationships.length > 0) {
@@ -124,12 +142,16 @@ export async function exportWordDocument(
         "To Column",
         "Constraint",
         "Source",
-        "Needs Review",
+        "Needs Review"
       ].map(
         (h) =>
           new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: h, bold: true })] })],
-          }),
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: h, bold: true })]
+              })
+            ]
+          })
       );
 
       const relRows = [new TableRow({ children: relHeaderCells })];
@@ -138,15 +160,47 @@ export async function exportWordDocument(
         relRows.push(
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(rel.fromTable)] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(rel.fromColumn)] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(rel.toTable)] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(rel.toColumn)] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(rel.constraintName ?? "")] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(rel.source)] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(rel.needsReview ? "Yes" : "No")] })] }),
-            ],
-          }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(rel.fromTable)] })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(rel.fromColumn)] })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(rel.toTable)] })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(rel.toColumn)] })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [new TextRun(rel.constraintName ?? "")]
+                  })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(rel.source)] })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [new TextRun(rel.needsReview ? "Yes" : "No")]
+                  })
+                ]
+              })
+            ]
+          })
         );
       }
 
@@ -154,8 +208,8 @@ export async function exportWordDocument(
     } else {
       children.push(
         new Paragraph({
-          children: [new TextRun("(none)")],
-        }),
+          children: [new TextRun("(none)")]
+        })
       );
     }
 
@@ -163,21 +217,20 @@ export async function exportWordDocument(
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Warnings")],
-      }),
+        children: [new TextRun("Warnings")]
+      })
     );
 
     if (doc.warnings.length > 0) {
-      const warnHeaderCells = [
-        "Severity",
-        "Code",
-        "Target",
-        "Message",
-      ].map(
+      const warnHeaderCells = ["Severity", "Code", "Target", "Message"].map(
         (h) =>
           new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: h, bold: true })] })],
-          }),
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: h, bold: true })]
+              })
+            ]
+          })
       );
 
       const warnRows = [new TableRow({ children: warnHeaderCells })];
@@ -186,12 +239,30 @@ export async function exportWordDocument(
         warnRows.push(
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(warning.severity)] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(warning.code)] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(warning.target ?? "")] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun(warning.message)] })] }),
-            ],
-          }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(warning.severity)] })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(warning.code)] })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [new TextRun(warning.target ?? "")]
+                  })
+                ]
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({ children: [new TextRun(warning.message)] })
+                ]
+              })
+            ]
+          })
         );
       }
 
@@ -199,13 +270,13 @@ export async function exportWordDocument(
     } else {
       children.push(
         new Paragraph({
-          children: [new TextRun("(none)")],
-        }),
+          children: [new TextRun("(none)")]
+        })
       );
     }
 
     const wordDoc = new Document({
-      sections: [{ children }],
+      sections: [{ children }]
     });
 
     const buffer = await Packer.toBuffer(wordDoc);
@@ -213,35 +284,35 @@ export async function exportWordDocument(
   } catch (err) {
     throw new Error(
       `Failed to export Word document: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
+      { cause: err }
     );
   }
 }
 
 function renderTableDetail(
   table: TableDoc,
-  doc: DatabaseDoc,
+  doc: DatabaseDoc
 ): (Paragraph | Table)[] {
   const items: (Paragraph | Table)[] = [];
 
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_2,
-      children: [new TextRun(`Table: ${table.name}`)],
-    }),
+      children: [new TextRun(`Table: ${table.name}`)]
+    })
   );
 
   if (table.description?.value) {
     items.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_3,
-        children: [new TextRun("Purpose")],
-      }),
+        children: [new TextRun("Purpose")]
+      })
     );
     items.push(
       new Paragraph({
-        children: [new TextRun(table.description.value)],
-      }),
+        children: [new TextRun(table.description.value)]
+      })
     );
   }
 
@@ -249,13 +320,13 @@ function renderTableDetail(
     items.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_3,
-        children: [new TextRun("DB Comment")],
-      }),
+        children: [new TextRun("DB Comment")]
+      })
     );
     items.push(
       new Paragraph({
-        children: [new TextRun(table.comment)],
-      }),
+        children: [new TextRun(table.comment)]
+      })
     );
   }
 
@@ -264,8 +335,8 @@ function renderTableDetail(
     items.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_3,
-        children: [new TextRun("Columns")],
-      }),
+        children: [new TextRun("Columns")]
+      })
     );
     items.push(renderColumnsTable(table));
   }
@@ -274,23 +345,23 @@ function renderTableDetail(
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Primary Key")],
-    }),
+      children: [new TextRun("Primary Key")]
+    })
   );
 
   if (table.primaryKeys.length > 0) {
     for (const pk of table.primaryKeys) {
       items.push(
         new Paragraph({
-          children: [new TextRun(`• ${pk}`)],
-        }),
+          children: [new TextRun(`• ${pk}`)]
+        })
       );
     }
   } else {
     items.push(
       new Paragraph({
-        children: [new TextRun("• (none)")],
-      }),
+        children: [new TextRun("• (none)")]
+      })
     );
   }
 
@@ -298,8 +369,8 @@ function renderTableDetail(
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Foreign Keys")],
-    }),
+      children: [new TextRun("Foreign Keys")]
+    })
   );
 
   if (table.foreignKeys.length > 0) {
@@ -309,17 +380,17 @@ function renderTableDetail(
         new Paragraph({
           children: [
             new TextRun(
-              `• ${fk.columns.join(", ")} → ${fk.referencedTable}.${fk.referencedColumns.join(", ")}${name}`,
-            ),
-          ],
-        }),
+              `• ${fk.columns.join(", ")} → ${fk.referencedTable}.${fk.referencedColumns.join(", ")}${name}`
+            )
+          ]
+        })
       );
     }
   } else {
     items.push(
       new Paragraph({
-        children: [new TextRun("• (none)")],
-      }),
+        children: [new TextRun("• (none)")]
+      })
     );
   }
 
@@ -327,18 +398,16 @@ function renderTableDetail(
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Indexes")],
-    }),
+      children: [new TextRun("Indexes")]
+    })
   );
 
-  const tableIndexes = doc.indexes.filter(
-    (idx) => idx.table === table.name,
-  );
+  const tableIndexes = doc.indexes.filter((idx) => idx.table === table.name);
   const allIndexes = [
     ...table.indexes,
     ...tableIndexes.filter(
-      (idx) => !table.indexes.some((ti) => ti.name === idx.name),
-    ),
+      (idx) => !table.indexes.some((ti) => ti.name === idx.name)
+    )
   ];
 
   if (allIndexes.length > 0) {
@@ -346,15 +415,17 @@ function renderTableDetail(
       const unique = idx.unique ? " UNIQUE" : "";
       items.push(
         new Paragraph({
-          children: [new TextRun(`• ${idx.name} on (${idx.columns.join(", ")})${unique}`)],
-        }),
+          children: [
+            new TextRun(`• ${idx.name} on (${idx.columns.join(", ")})${unique}`)
+          ]
+        })
       );
     }
   } else {
     items.push(
       new Paragraph({
-        children: [new TextRun("• (none)")],
-      }),
+        children: [new TextRun("• (none)")]
+      })
     );
   }
 
@@ -362,8 +433,8 @@ function renderTableDetail(
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Review TODOs")],
-    }),
+      children: [new TextRun("Review TODOs")]
+    })
   );
 
   items.push(...renderReviewTodos(table.reviewTodos));
@@ -371,8 +442,8 @@ function renderTableDetail(
   // Page break between tables
   items.push(
     new Paragraph({
-      children: [new TextRun("")],
-    }),
+      children: [new TextRun("")]
+    })
   );
 
   return items;
@@ -386,12 +457,14 @@ function renderColumnsTable(table: TableDoc): Table {
     "Default",
     "PK",
     "FK",
-    "Comment",
+    "Comment"
   ].map(
     (h) =>
       new TableCell({
-        children: [new Paragraph({ children: [new TextRun({ text: h, bold: true })] })],
-      }),
+        children: [
+          new Paragraph({ children: [new TextRun({ text: h, bold: true })] })
+        ]
+      })
   );
 
   const colRows = [new TableRow({ children: headerCells })];
@@ -400,15 +473,47 @@ function renderColumnsTable(table: TableDoc): Table {
     colRows.push(
       new TableRow({
         children: [
-          new TableCell({ children: [new Paragraph({ children: [new TextRun(col.name)] })] }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun(col.type)] })] }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun(col.nullable ? "Yes" : "No")] })] }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun(col.defaultValue ?? "-")] })] }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun(col.isPrimaryKey ? "Yes" : "No")] })] }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun(col.isForeignKey ? "Yes" : "No")] })] }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun(col.comment ?? "")] })] }),
-        ],
-      }),
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun(col.name)] })]
+          }),
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun(col.type)] })]
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun(col.nullable ? "Yes" : "No")]
+              })
+            ]
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun(col.defaultValue ?? "-")]
+              })
+            ]
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun(col.isPrimaryKey ? "Yes" : "No")]
+              })
+            ]
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun(col.isForeignKey ? "Yes" : "No")]
+              })
+            ]
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({ children: [new TextRun(col.comment ?? "")] })
+            ]
+          })
+        ]
+      })
     );
   }
 
@@ -419,15 +524,17 @@ function renderReviewTodos(todos: ReviewTodo[]): Paragraph[] {
   if (todos.length === 0) {
     return [
       new Paragraph({
-        children: [new TextRun("• (none)")],
-      }),
+        children: [new TextRun("• (none)")]
+      })
     ];
   }
 
   return todos.map((todo) => {
     const sug = todo.suggestion ? ` — ${todo.suggestion}` : "";
     return new Paragraph({
-      children: [new TextRun(`• [${todo.type}] ${todo.target}: ${todo.issue}${sug}`)],
+      children: [
+        new TextRun(`• [${todo.type}] ${todo.target}: ${todo.issue}${sug}`)
+      ]
     });
   });
 }

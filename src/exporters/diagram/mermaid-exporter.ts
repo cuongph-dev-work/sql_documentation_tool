@@ -6,9 +6,16 @@ export type DiagramExportOptions = {
   outDir: string;
 };
 
-export async function exportMermaidDiagram(doc: DatabaseDoc, options: DiagramExportOptions): Promise<void> {
+export async function exportMermaidDiagram(
+  doc: DatabaseDoc,
+  options: DiagramExportOptions
+): Promise<void> {
   await mkdir(options.outDir, { recursive: true });
-  await writeFile(join(options.outDir, "er_diagram.mmd"), renderMermaid(doc), "utf8");
+  await writeFile(
+    join(options.outDir, "er_diagram.mmd"),
+    renderMermaid(doc),
+    "utf8"
+  );
 }
 
 export function renderMermaid(doc: DatabaseDoc): string {
@@ -17,7 +24,9 @@ export function renderMermaid(doc: DatabaseDoc): string {
   // Warnings as Mermaid comments
   for (const warning of doc.warnings) {
     const target = warning.target ? ` (${warning.target})` : "";
-    lines.push(`  %% WARNING [${warning.severity}] ${warning.code}${target}: ${warning.message}`);
+    lines.push(
+      `  %% WARNING [${warning.severity}] ${warning.code}${target}: ${warning.message}`
+    );
   }
 
   for (const table of doc.tables) {
@@ -28,14 +37,25 @@ export function renderMermaid(doc: DatabaseDoc): string {
 
     lines.push(`  ${table.name} {`);
     for (const column of table.columns) {
-      const markers = [column.isPrimaryKey ? "PK" : "", column.isForeignKey ? "FK" : ""].filter(Boolean).join(" ");
-      lines.push(`    ${sanitizeType(column.type)} ${column.name}${markers ? ` "${markers}"` : ""}`);
+      const markers = [
+        column.isPrimaryKey ? "PK" : "",
+        column.isForeignKey ? "FK" : ""
+      ]
+        .filter(Boolean)
+        .join(" ");
+      lines.push(
+        `    ${sanitizeType(column.type)} ${column.name}${markers ? ` "${markers}"` : ""}`
+      );
     }
     lines.push("  }");
   }
 
-  for (const relationship of doc.relationships.filter((item) => item.source === "schema")) {
-    lines.push(`  ${relationship.toTable} ||--o{ ${relationship.fromTable} : "${relationship.constraintName ?? relationship.fromColumn}"`);
+  for (const relationship of doc.relationships.filter(
+    (item) => item.source === "schema"
+  )) {
+    lines.push(
+      `  ${relationship.toTable} ||--o{ ${relationship.fromTable} : "${relationship.constraintName ?? relationship.fromColumn}"`
+    );
   }
 
   return `${lines.join("\n")}\n`;

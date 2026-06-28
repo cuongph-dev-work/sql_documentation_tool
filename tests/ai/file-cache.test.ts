@@ -7,7 +7,8 @@ describe("file-cache", () => {
   it("cache miss returns null", async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), "cache-test-"));
     try {
-      const { getCachedResponse } = await import("../../src/ai/cache/file-cache");
+      const { getCachedResponse } =
+        await import("../../src/ai/cache/file-cache");
       const result = await getCachedResponse(
         { table: "users", model: "gpt-4" },
         { cacheDir: tmpDir }
@@ -21,11 +22,13 @@ describe("file-cache", () => {
   it("cache write+read roundtrips the response", async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), "cache-test-"));
     try {
-      const { getCachedResponse, setCachedResponse } = await import(
-        "../../src/ai/cache/file-cache"
-      );
+      const { getCachedResponse, setCachedResponse } =
+        await import("../../src/ai/cache/file-cache");
       const key = { table: "orders", model: "gpt-4" };
-      const original = JSON.stringify({ purpose: "Stores customer orders", confidence: "high" });
+      const original = JSON.stringify({
+        purpose: "Stores customer orders",
+        confidence: "high"
+      });
 
       await setCachedResponse(key, original, { cacheDir: tmpDir });
       const cached = await getCachedResponse(key, { cacheDir: tmpDir });
@@ -39,9 +42,8 @@ describe("file-cache", () => {
   it("different keys produce different cache files", async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), "cache-test-"));
     try {
-      const { getCachedResponse, setCachedResponse } = await import(
-        "../../src/ai/cache/file-cache"
-      );
+      const { getCachedResponse, setCachedResponse } =
+        await import("../../src/ai/cache/file-cache");
       const keyA = { table: "users", model: "gpt-4" };
       const keyB = { table: "orders", model: "gpt-4" };
       const respA = "response for users";
@@ -64,9 +66,8 @@ describe("file-cache", () => {
   it("same key returns cached response (no duplicate writes needed)", async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), "cache-test-"));
     try {
-      const { getCachedResponse, setCachedResponse } = await import(
-        "../../src/ai/cache/file-cache"
-      );
+      const { getCachedResponse, setCachedResponse } =
+        await import("../../src/ai/cache/file-cache");
       const key = { table: "products", model: "gpt-4" };
       const resp = "cached products response";
 

@@ -16,43 +16,40 @@ const doc: DatabaseDoc = {
           type: "integer",
           nullable: false,
           isPrimaryKey: true,
-          isForeignKey: false,
-        },
+          isForeignKey: false
+        }
       ],
       primaryKeys: ["id"],
       foreignKeys: [],
       indexes: [],
-      reviewTodos: [],
-    },
+      reviewTodos: []
+    }
   ],
   relationships: [],
   indexes: [],
-  warnings: [],
+  warnings: []
 };
 
 describe("exportHtmlDocs", () => {
   it("writes html/index.html and html/tables/users.html", async () => {
-    const { exportHtmlDocs } = await import(
-      "../../src/exporters/html/html-exporter"
-    );
+    const { exportHtmlDocs } =
+      await import("../../src/exporters/html/html-exporter");
     const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
     await exportHtmlDocs(doc, { outDir: dir });
 
-    await expect(stat(join(dir, "html", "index.html"))).resolves.toMatchObject(
-      {
-        size: expect.any(Number),
-      },
-    );
+    await expect(stat(join(dir, "html", "index.html"))).resolves.toMatchObject({
+      size: expect.any(Number)
+    });
     await expect(
-      stat(join(dir, "html", "tables", "users.html")),
+      stat(join(dir, "html", "tables", "users.html"))
     ).resolves.toMatchObject({
-      size: expect.any(Number),
+      size: expect.any(Number)
     });
 
     // Content validation: contains <table and </table>
     const tableContent = await readFile(
       join(dir, "html", "tables", "users.html"),
-      "utf8",
+      "utf8"
     );
     expect(tableContent).toContain("<table");
     expect(tableContent).toContain("</table>");
@@ -67,9 +64,8 @@ describe("exportHtmlDocs", () => {
   });
 
   it("uses encodeURIComponent for href attributes with unsafe names", async () => {
-    const { exportHtmlDocs } = await import(
-      "../../src/exporters/html/html-exporter"
-    );
+    const { exportHtmlDocs } =
+      await import("../../src/exporters/html/html-exporter");
 
     const testDoc: DatabaseDoc = {
       dialect: "postgres",
@@ -82,18 +78,18 @@ describe("exportHtmlDocs", () => {
               type: "integer",
               nullable: false,
               isPrimaryKey: true,
-              isForeignKey: false,
-            },
+              isForeignKey: false
+            }
           ],
           primaryKeys: ["id"],
           foreignKeys: [],
           indexes: [],
-          reviewTodos: [],
-        },
+          reviewTodos: []
+        }
       ],
       relationships: [],
       indexes: [],
-      warnings: [],
+      warnings: []
     };
 
     const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
@@ -101,7 +97,7 @@ describe("exportHtmlDocs", () => {
 
     const indexContent = await readFile(
       join(dir, "html", "index.html"),
-      "utf8",
+      "utf8"
     );
 
     // The sanitized filename has all special chars replaced with _

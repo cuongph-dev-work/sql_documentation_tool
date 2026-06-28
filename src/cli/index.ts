@@ -74,7 +74,9 @@ function parseFormats(value?: string): OutputFormat[] | undefined {
     if (parsed.success) {
       valid.push(parsed.data);
     } else {
-      console.warn(`Warning: Unrecognized format "${item}" — must be one of: ${outputFormatSchema.options.join(", ")}`);
+      console.warn(
+        `Warning: Unrecognized format "${item}" — must be one of: ${outputFormatSchema.options.join(", ")}`
+      );
     }
   }
   return valid.length > 0 ? valid : undefined;

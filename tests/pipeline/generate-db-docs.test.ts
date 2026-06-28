@@ -19,7 +19,9 @@ describe("generateDbDocs", () => {
       ai: { enabled: false }
     });
 
-    await expect(readdir(outDir)).resolves.toEqual(expect.arrayContaining(["database_dictionary.xlsx", "er_diagram.mmd"]));
+    await expect(readdir(outDir)).resolves.toEqual(
+      expect.arrayContaining(["database_dictionary.xlsx", "er_diagram.mmd"])
+    );
     await rm(outDir, { recursive: true, force: true });
   });
 });

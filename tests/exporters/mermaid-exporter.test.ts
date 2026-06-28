@@ -13,7 +13,15 @@ describe("exportMermaidDiagram", () => {
       tables: [
         {
           name: "users",
-          columns: [{ name: "id", type: "integer", nullable: false, isPrimaryKey: true, isForeignKey: false }],
+          columns: [
+            {
+              name: "id",
+              type: "integer",
+              nullable: false,
+              isPrimaryKey: true,
+              isForeignKey: false
+            }
+          ],
           primaryKeys: ["id"],
           foreignKeys: [],
           indexes: [],

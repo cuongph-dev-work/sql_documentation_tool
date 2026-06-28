@@ -7,12 +7,25 @@ export type ExportOptions = {
   outDir: string;
 };
 
-export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOptions): Promise<void> {
+export async function exportExcelDictionary(
+  doc: DatabaseDoc,
+  options: ExportOptions
+): Promise<void> {
   await mkdir(options.outDir, { recursive: true });
   const workbook = new ExcelJS.Workbook();
 
   const tableSheet = workbook.addWorksheet("01_Table_List");
-  tableSheet.addRow(["Table", "Schema", "Comment", "Description", "Description Source", "Confidence", "Need Review", "Column Count", "PK"]);
+  tableSheet.addRow([
+    "Table",
+    "Schema",
+    "Comment",
+    "Description",
+    "Description Source",
+    "Confidence",
+    "Need Review",
+    "Column Count",
+    "PK"
+  ]);
   for (const table of doc.tables) {
     tableSheet.addRow([
       table.name,
@@ -28,7 +41,20 @@ export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOpt
   }
 
   const columnSheet = workbook.addWorksheet("02_Column_Dictionary");
-  columnSheet.addRow(["Table", "Column", "Type", "Nullable", "Default", "PK", "FK", "DB Comment", "Description", "Description Source", "Confidence", "Need Review"]);
+  columnSheet.addRow([
+    "Table",
+    "Column",
+    "Type",
+    "Nullable",
+    "Default",
+    "PK",
+    "FK",
+    "DB Comment",
+    "Description",
+    "Description Source",
+    "Confidence",
+    "Need Review"
+  ]);
   for (const table of doc.tables) {
     for (const column of table.columns) {
       columnSheet.addRow([
@@ -49,7 +75,15 @@ export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOpt
   }
 
   const relationshipSheet = workbook.addWorksheet("03_Relationships");
-  relationshipSheet.addRow(["From Table", "From Column", "To Table", "To Column", "Constraint Name", "Source", "Need Review"]);
+  relationshipSheet.addRow([
+    "From Table",
+    "From Column",
+    "To Table",
+    "To Column",
+    "Constraint Name",
+    "Source",
+    "Need Review"
+  ]);
   for (const relationship of doc.relationships) {
     relationshipSheet.addRow([
       relationship.fromTable,
@@ -66,15 +100,28 @@ export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOpt
   todoSheet.addRow(["Type", "Target", "Issue", "Suggestion", "Source"]);
   for (const table of doc.tables) {
     for (const todo of table.reviewTodos) {
-      todoSheet.addRow([todo.type, todo.target, todo.issue, todo.suggestion ?? "", todo.source]);
+      todoSheet.addRow([
+        todo.type,
+        todo.target,
+        todo.issue,
+        todo.suggestion ?? "",
+        todo.source
+      ]);
     }
   }
 
   const warningSheet = workbook.addWorksheet("09_Warnings");
   warningSheet.addRow(["Severity", "Code", "Target", "Message"]);
   for (const warning of doc.warnings) {
-    warningSheet.addRow([warning.severity, warning.code, warning.target ?? "", warning.message]);
+    warningSheet.addRow([
+      warning.severity,
+      warning.code,
+      warning.target ?? "",
+      warning.message
+    ]);
   }
 
-  await workbook.xlsx.writeFile(join(options.outDir, "database_dictionary.xlsx"));
+  await workbook.xlsx.writeFile(
+    join(options.outDir, "database_dictionary.xlsx")
+  );
 }

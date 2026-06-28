@@ -26,7 +26,9 @@ export type ScanSourceContextOptions = {
   maxLinesPerChunk?: number;
 };
 
-export async function scanSourceContext(options: ScanSourceContextOptions): Promise<SourceContext> {
+export async function scanSourceContext(
+  options: ScanSourceContextOptions
+): Promise<SourceContext> {
   const paths = await fg(options.include, {
     cwd: options.rootDir,
     absolute: true,
@@ -42,7 +44,9 @@ export async function scanSourceContext(options: ScanSourceContextOptions): Prom
     } catch {
       continue;
     }
-    const relatedTables = options.tableNames.filter((tableName) => isLikelyRelatedToTable(path, content, tableName));
+    const relatedTables = options.tableNames.filter((tableName) =>
+      isLikelyRelatedToTable(path, content, tableName)
+    );
     if (relatedTables.length === 0) continue;
     files.push({
       path,

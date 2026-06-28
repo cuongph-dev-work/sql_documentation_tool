@@ -11,7 +11,10 @@ function hashKey(input: Record<string, string>): string {
   return createHash("sha256").update(normalized).digest("hex");
 }
 
-export async function getCachedResponse(key: Record<string, string>, options: CacheOptions): Promise<string | null> {
+export async function getCachedResponse(
+  key: Record<string, string>,
+  options: CacheOptions
+): Promise<string | null> {
   const hashed = hashKey(key);
   const cachePath = join(options.cacheDir, `${hashed}.json`);
   try {
@@ -22,9 +25,17 @@ export async function getCachedResponse(key: Record<string, string>, options: Ca
   }
 }
 
-export async function setCachedResponse(key: Record<string, string>, response: string, options: CacheOptions): Promise<void> {
+export async function setCachedResponse(
+  key: Record<string, string>,
+  response: string,
+  options: CacheOptions
+): Promise<void> {
   const hashed = hashKey(key);
   const cachePath = join(options.cacheDir, `${hashed}.json`);
   await mkdir(options.cacheDir, { recursive: true });
-  await writeFile(cachePath, JSON.stringify({ response, cachedAt: new Date().toISOString() }), "utf8");
+  await writeFile(
+    cachePath,
+    JSON.stringify({ response, cachedAt: new Date().toISOString() }),
+    "utf8"
+  );
 }

@@ -435,9 +435,7 @@ Example output:
       "needsReview": true
     }
   },
-  "reviewTodos": [
-    "Confirm exact status values with business owner."
-  ]
+  "reviewTodos": ["Confirm exact status values with business owner."]
 }
 ```
 
@@ -814,6 +812,7 @@ Database schema is the single source of truth.
 Use backend source code only as additional context.
 
 Never override database facts:
+
 - table name
 - column name
 - type
@@ -834,6 +833,7 @@ Return only valid JSON.
 Analyze the provided table metadata and related source context.
 
 Generate:
+
 - table purpose
 - business meaning
 - important notes
@@ -849,6 +849,7 @@ Do not modify DB schema facts.
 For each column, generate a concise business description.
 
 Use priority:
+
 1. DB comment
 2. backend source context
 3. naming convention inference

@@ -11,18 +11,36 @@ export type EnrichDbOptions = {
   doc: DatabaseDoc;
   providerConfig: AiProviderConfig;
   rules: Record<string, string>;
-  sourceContext?: { files: Array<{ path: string; relatedTables: string[]; chunks: Array<{ content: string }> }> };
+  sourceContext?: {
+    files: Array<{
+      path: string;
+      relatedTables: string[];
+      chunks: Array<{ content: string }>;
+    }>;
+  };
   provider?: typeof callAiProvider;
   cacheOptions?: CacheOptions;
 };
 
-export async function enrichDatabaseDoc(options: EnrichDbOptions): Promise<DatabaseDoc> {
-  const { doc, providerConfig, rules, sourceContext, provider = callAiProvider, cacheOptions } = options;
+export async function enrichDatabaseDoc(
+  options: EnrichDbOptions
+): Promise<DatabaseDoc> {
+  const {
+    doc,
+    providerConfig,
+    rules,
+    sourceContext,
+    provider = callAiProvider,
+    cacheOptions
+  } = options;
   const enriched = structuredClone(doc);
 
   for (const table of enriched.tables) {
     try {
-      const relatedFiles = sourceContext?.files.filter((f) => f.relatedTables.includes(table.name)) ?? [];
+      const relatedFiles =
+        sourceContext?.files.filter((f) =>
+          f.relatedTables.includes(table.name)
+        ) ?? [];
       const contextSnippet = relatedFiles
         .flatMap((f) => f.chunks)
         .map((c) => c.content)
@@ -48,9 +66,18 @@ export async function enrichDatabaseDoc(options: EnrichDbOptions): Promise<Datab
       };
 
       const metadataJson = JSON.stringify(tableMetadata);
-      const metadataHash = createHash("sha256").update(metadataJson).digest("hex").slice(0, 16);
-      const contextHash = createHash("sha256").update(contextSnippet || "").digest("hex").slice(0, 16);
-      const rulesHash = createHash("sha256").update(systemPrompt + tablePrompt).digest("hex").slice(0, 16);
+      const metadataHash = createHash("sha256")
+        .update(metadataJson)
+        .digest("hex")
+        .slice(0, 16);
+      const contextHash = createHash("sha256")
+        .update(contextSnippet || "")
+        .digest("hex")
+        .slice(0, 16);
+      const rulesHash = createHash("sha256")
+        .update(systemPrompt + tablePrompt + columnPrompt)
+        .digest("hex")
+        .slice(0, 16);
 
       const cacheKey: Record<string, string> = {
         table: table.name,
@@ -67,13 +94,12 @@ export async function enrichDatabaseDoc(options: EnrichDbOptions): Promise<Datab
         if (cached !== null) {
           responseText = cached;
         } else {
-          const userPrompt = [
+          const userPrompt = buildUserPrompt(
             tablePrompt,
-            "",
-            "## Table Metadata",
+            columnPrompt,
             metadataJson,
-            contextSnippet ? `\n## Related Source Context\n${contextSnippet}` : ""
-          ].join("\n");
+            contextSnippet
+          );
 
           responseText = await provider(providerConfig, {
             systemPrompt,
@@ -82,13 +108,12 @@ export async function enrichDatabaseDoc(options: EnrichDbOptions): Promise<Datab
           await setCachedResponse(cacheKey, responseText, cacheOptions);
         }
       } else {
-        const userPrompt = [
+        const userPrompt = buildUserPrompt(
           tablePrompt,
-          "",
-          "## Table Metadata",
+          columnPrompt,
           metadataJson,
-          contextSnippet ? `\n## Related Source Context\n${contextSnippet}` : ""
-        ].join("\n");
+          contextSnippet
+        );
 
         responseText = await provider(providerConfig, {
           systemPrompt,
@@ -96,7 +121,9 @@ export async function enrichDatabaseDoc(options: EnrichDbOptions): Promise<Datab
         });
       }
 
-      const parsed = aiTableEnrichResponseSchema.parse(JSON.parse(responseText));
+      const parsed = aiTableEnrichResponseSchema.parse(
+        JSON.parse(responseText)
+      );
 
       table.description = {
         value: parsed.purpose ?? table.comment ?? "",
@@ -106,7 +133,9 @@ export async function enrichDatabaseDoc(options: EnrichDbOptions): Promise<Datab
       };
 
       if (parsed.columnDescriptions) {
-        for (const [colName, desc] of Object.entries(parsed.columnDescriptions)) {
+        for (const [colName, desc] of Object.entries(
+          parsed.columnDescriptions
+        )) {
           const column = table.columns.find((c) => c.name === colName);
           if (column) {
             column.description = {
@@ -138,4 +167,22 @@ export async function enrichDatabaseDoc(options: EnrichDbOptions): Promise<Datab
   }
 
   return enriched;
+}
+
+function buildUserPrompt(
+  tablePrompt: string,
+  columnPrompt: string,
+  metadataJson: string,
+  contextSnippet: string
+): string {
+  return [
+    tablePrompt,
+    "",
+    "## Column Enrichment Guidelines",
+    columnPrompt,
+    "",
+    "## Table Metadata",
+    metadataJson,
+    contextSnippet ? `\n## Related Source Context\n${contextSnippet}` : ""
+  ].join("\n");
 }

@@ -1,7 +1,13 @@
 import { cosmiconfig } from "cosmiconfig";
-import { dbdocgenConfigSchema, type DbdocgenConfig, type OutputFormat } from "./schema";
+import {
+  dbdocgenConfigSchema,
+  type DbdocgenConfig,
+  type OutputFormat
+} from "./schema";
 
-type DeepPartial<T> = T extends object ? { [P in keyof T]?: DeepPartial<T[P]> } : T;
+type DeepPartial<T> = T extends object
+  ? { [P in keyof T]?: DeepPartial<T[P]> }
+  : T;
 
 export type CliConfigOptions = {
   schema?: string;
@@ -20,7 +26,9 @@ export type LoadConfigInput = {
   cliOptions: CliConfigOptions;
 };
 
-export async function loadConfig(input: LoadConfigInput): Promise<DbdocgenConfig> {
+export async function loadConfig(
+  input: LoadConfigInput
+): Promise<DbdocgenConfig> {
   const explorer = cosmiconfig("dbdocgen", {
     searchPlaces: ["dbdocgen.config.js", "dbdocgen.config.json", ".dbdocgenrc"]
   });
@@ -34,7 +42,10 @@ export async function loadConfig(input: LoadConfigInput): Promise<DbdocgenConfig
   return dbdocgenConfigSchema.parse(merged);
 }
 
-function mergeConfig(fileConfig: DeepPartial<DbdocgenConfig>, cli: CliConfigOptions): DeepPartial<DbdocgenConfig> {
+function mergeConfig(
+  fileConfig: DeepPartial<DbdocgenConfig>,
+  cli: CliConfigOptions
+): DeepPartial<DbdocgenConfig> {
   return {
     ...fileConfig,
     schema: cli.schema ?? fileConfig.schema,

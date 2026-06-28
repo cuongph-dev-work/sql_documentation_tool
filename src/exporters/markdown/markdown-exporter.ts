@@ -9,7 +9,7 @@ export type MarkdownExportOptions = {
 
 export async function exportMarkdownDocs(
   doc: DatabaseDoc,
-  options: MarkdownExportOptions,
+  options: MarkdownExportOptions
 ): Promise<void> {
   try {
     await mkdir(options.outDir, { recursive: true });
@@ -19,20 +19,20 @@ export async function exportMarkdownDocs(
     await writeFile(
       join(options.outDir, "DATABASE.md"),
       renderOverview(doc),
-      "utf8",
+      "utf8"
     );
 
     for (const table of doc.tables) {
       await writeFile(
         join(tablesDir, `${sanitizeFilename(table.name)}.md`),
         renderTableDoc(table, doc),
-        "utf8",
+        "utf8"
       );
     }
   } catch (err) {
     throw new Error(
       `Failed to export Markdown docs: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
+      { cause: err }
     );
   }
 }
@@ -59,7 +59,9 @@ function renderOverview(doc: DatabaseDoc): string {
   if (doc.warnings.length > 0) {
     for (const warning of doc.warnings) {
       const target = warning.target ? ` (${escapeMd(warning.target)})` : "";
-      lines.push(`- [${escapeMd(warning.severity)}] ${escapeMd(warning.code)}${target}: ${escapeMd(warning.message)}`);
+      lines.push(
+        `- [${escapeMd(warning.severity)}] ${escapeMd(warning.code)}${target}: ${escapeMd(warning.message)}`
+      );
     }
   } else {
     lines.push("- (none)");
@@ -90,16 +92,12 @@ function renderTableDoc(table: TableDoc, doc: DatabaseDoc): string {
   // Columns
   lines.push("## Columns");
   lines.push("");
-  lines.push(
-    "| Name | Type | Nullable | Default | PK | FK | Comment |",
-  );
-  lines.push(
-    "|------|------|----------|---------|----|----|---------|",
-  );
+  lines.push("| Name | Type | Nullable | Default | PK | FK | Comment |");
+  lines.push("|------|------|----------|---------|----|----|---------|");
 
   for (const col of table.columns) {
     lines.push(
-      `| ${escapeMd(col.name)} | ${escapeMd(col.type)} | ${col.nullable ? "Yes" : "No"} | ${escapeMd(col.defaultValue ?? "-")} | ${col.isPrimaryKey ? "Yes" : "No"} | ${col.isForeignKey ? "Yes" : "No"} | ${escapeMd(col.comment ?? "")} |`,
+      `| ${escapeMd(col.name)} | ${escapeMd(col.type)} | ${col.nullable ? "Yes" : "No"} | ${escapeMd(col.defaultValue ?? "-")} | ${col.isPrimaryKey ? "Yes" : "No"} | ${col.isForeignKey ? "Yes" : "No"} | ${escapeMd(col.comment ?? "")} |`
     );
   }
   lines.push("");
@@ -123,7 +121,7 @@ function renderTableDoc(table: TableDoc, doc: DatabaseDoc): string {
     for (const fk of table.foreignKeys) {
       const name = fk.name ? ` (${escapeMd(fk.name)})` : "";
       lines.push(
-        `- ${fk.columns.join(", ")} → ${escapeMd(fk.referencedTable)}.${fk.referencedColumns.join(", ")}${name}`,
+        `- ${fk.columns.join(", ")} → ${escapeMd(fk.referencedTable)}.${fk.referencedColumns.join(", ")}${name}`
       );
     }
   } else {
@@ -134,21 +132,19 @@ function renderTableDoc(table: TableDoc, doc: DatabaseDoc): string {
   // Indexes
   lines.push("## Indexes");
   lines.push("");
-  const tableIndexes = doc.indexes.filter(
-    (idx) => idx.table === table.name,
-  );
+  const tableIndexes = doc.indexes.filter((idx) => idx.table === table.name);
   const allIndexes = [
     ...table.indexes,
     ...tableIndexes.filter(
-      (idx) => !table.indexes.some((ti) => ti.name === idx.name),
-    ),
+      (idx) => !table.indexes.some((ti) => ti.name === idx.name)
+    )
   ];
 
   if (allIndexes.length > 0) {
     for (const idx of allIndexes) {
       const unique = idx.unique ? " UNIQUE" : "";
       lines.push(
-        `- ${escapeMd(idx.name)} on (${idx.columns.join(", ")})${unique}`,
+        `- ${escapeMd(idx.name)} on (${idx.columns.join(", ")})${unique}`
       );
     }
   } else {
@@ -160,7 +156,7 @@ function renderTableDoc(table: TableDoc, doc: DatabaseDoc): string {
   lines.push("## Relationships");
   lines.push("");
   const tableRels = doc.relationships.filter(
-    (rel) => rel.fromTable === table.name || rel.toTable === table.name,
+    (rel) => rel.fromTable === table.name || rel.toTable === table.name
   );
   if (tableRels.length > 0) {
     for (const rel of tableRels) {
@@ -183,7 +179,7 @@ function renderTableDoc(table: TableDoc, doc: DatabaseDoc): string {
     for (const todo of table.reviewTodos) {
       const sug = todo.suggestion ? ` — ${escapeMd(todo.suggestion)}` : "";
       lines.push(
-        `- [${escapeMd(todo.type)}] ${escapeMd(todo.target)}: ${escapeMd(todo.issue)}${sug}`,
+        `- [${escapeMd(todo.type)}] ${escapeMd(todo.target)}: ${escapeMd(todo.issue)}${sug}`
       );
     }
   } else {

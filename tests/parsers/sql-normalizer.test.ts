@@ -106,14 +106,20 @@ describe("normalizeSqlAst", () => {
           {
             constraint: "fk_orders_store",
             definition: [
-              { expr: { type: "column_ref", table: null, column: "store_id" }, as: null }
+              {
+                expr: { type: "column_ref", table: null, column: "store_id" },
+                as: null
+              }
             ],
             constraint_type: "FOREIGN KEY",
             resource: "constraint",
             reference_definition: {
               table: [{ db: null, table: "stores" }],
               definition: [
-                { expr: { type: "column_ref", table: null, column: "id" }, as: null }
+                {
+                  expr: { type: "column_ref", table: null, column: "id" },
+                  as: null
+                }
               ]
             }
           }

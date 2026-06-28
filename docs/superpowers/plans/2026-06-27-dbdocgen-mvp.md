@@ -72,6 +72,7 @@ tests/
 ## Task 1: Project Scaffold
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tsconfig.json`
 - Create: `tsup.config.ts`
@@ -226,7 +227,10 @@ export default [
       "@typescript-eslint": tsPlugin
     },
     rules: {
-      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" }
+      ],
       "@typescript-eslint/consistent-type-imports": "error"
     }
   }
@@ -279,6 +283,7 @@ git commit -m "chore: scaffold dbdocgen package"
 ## Task 2: Normalized Metadata Model
 
 **Files:**
+
 - Create: `src/core/model/database-doc.ts`
 - Create: `src/core/model/validation.ts`
 - Create: `src/core/warnings.ts`
@@ -362,7 +367,13 @@ Expected: FAIL because `src/core/model/validation.ts` does not exist.
 Create `src/core/model/database-doc.ts`:
 
 ```ts
-export type DatabaseDialect = "postgres" | "mysql" | "mariadb" | "sqlite" | "mssql" | "unknown";
+export type DatabaseDialect =
+  | "postgres"
+  | "mysql"
+  | "mariadb"
+  | "sqlite"
+  | "mssql"
+  | "unknown";
 
 export type Confidence = "high" | "medium" | "low";
 
@@ -449,7 +460,11 @@ Create `src/core/warnings.ts`:
 ```ts
 import type { WarningDoc } from "./model/database-doc";
 
-export function createWarning(code: string, message: string, target?: string): WarningDoc {
+export function createWarning(
+  code: string,
+  message: string,
+  target?: string
+): WarningDoc {
   return {
     code,
     message,
@@ -536,7 +551,14 @@ export const tableDocSchema = z.object({
 });
 
 export const databaseDocSchema = z.object({
-  dialect: z.enum(["postgres", "mysql", "mariadb", "sqlite", "mssql", "unknown"]),
+  dialect: z.enum([
+    "postgres",
+    "mysql",
+    "mariadb",
+    "sqlite",
+    "mssql",
+    "unknown"
+  ]),
   tables: z.array(tableDocSchema),
   relationships: z.array(relationshipDocSchema),
   indexes: z.array(indexDocSchema),
@@ -583,6 +605,7 @@ git commit -m "feat: add normalized database metadata model"
 ## Task 3: Config Loader
 
 **Files:**
+
 - Create: `src/core/config/defaults.ts`
 - Create: `src/core/config/schema.ts`
 - Create: `src/core/config/loader.ts`
@@ -660,7 +683,13 @@ Create `src/core/config/schema.ts`:
 ```ts
 import { z } from "zod";
 
-export const outputFormatSchema = z.enum(["excel", "markdown", "html", "diagram", "word"]);
+export const outputFormatSchema = z.enum([
+  "excel",
+  "markdown",
+  "html",
+  "diagram",
+  "word"
+]);
 
 export const dbdocgenConfigSchema = z.object({
   schema: z.string().default("./schema.sql"),
@@ -671,10 +700,26 @@ export const dbdocgenConfigSchema = z.object({
         .object({
           enabled: z.boolean().default(false),
           rootDir: z.string().default("./src"),
-          include: z.array(z.string()).default(["**/*.ts", "**/*.js", "**/*.rb", "**/*.php", "**/*.py", "**/*.java"]),
+          include: z
+            .array(z.string())
+            .default([
+              "**/*.ts",
+              "**/*.js",
+              "**/*.rb",
+              "**/*.php",
+              "**/*.py",
+              "**/*.java"
+            ]),
           exclude: z
             .array(z.string())
-            .default(["**/node_modules/**", "**/dist/**", "**/build/**", "**/.next/**", "**/coverage/**", "**/.git/**"])
+            .default([
+              "**/node_modules/**",
+              "**/dist/**",
+              "**/build/**",
+              "**/.next/**",
+              "**/coverage/**",
+              "**/.git/**"
+            ])
         })
         .default({})
     })
@@ -682,7 +727,9 @@ export const dbdocgenConfigSchema = z.object({
   ai: z
     .object({
       enabled: z.boolean().default(true),
-      provider: z.enum(["9router", "openai", "openai-compatible"]).default("9router"),
+      provider: z
+        .enum(["9router", "openai", "openai-compatible"])
+        .default("9router"),
       baseURL: z.string().optional(),
       apiKeyEnv: z.string().default("NINE_ROUTER_API_KEY"),
       model: z.string().default("openai/gpt-4.1-mini"),
@@ -693,7 +740,9 @@ export const dbdocgenConfigSchema = z.object({
     .default({}),
   output: z
     .object({
-      formats: z.array(outputFormatSchema).default(["excel", "markdown", "html", "diagram", "word"]),
+      formats: z
+        .array(outputFormatSchema)
+        .default(["excel", "markdown", "html", "diagram", "word"]),
       language: z.string().default("vi")
     })
     .default({})
@@ -717,7 +766,11 @@ Create `src/core/config/loader.ts`:
 
 ```ts
 import { cosmiconfig } from "cosmiconfig";
-import { dbdocgenConfigSchema, type DbdocgenConfig, type OutputFormat } from "./schema";
+import {
+  dbdocgenConfigSchema,
+  type DbdocgenConfig,
+  type OutputFormat
+} from "./schema";
 
 export type CliConfigOptions = {
   schema?: string;
@@ -736,7 +789,9 @@ export type LoadConfigInput = {
   cliOptions: CliConfigOptions;
 };
 
-export async function loadConfig(input: LoadConfigInput): Promise<DbdocgenConfig> {
+export async function loadConfig(
+  input: LoadConfigInput
+): Promise<DbdocgenConfig> {
   const explorer = cosmiconfig("dbdocgen", {
     searchPlaces: ["dbdocgen.config.js", "dbdocgen.config.json", ".dbdocgenrc"]
   });
@@ -750,7 +805,10 @@ export async function loadConfig(input: LoadConfigInput): Promise<DbdocgenConfig
   return dbdocgenConfigSchema.parse(merged);
 }
 
-function mergeConfig(fileConfig: Partial<DbdocgenConfig>, cli: CliConfigOptions): Partial<DbdocgenConfig> {
+function mergeConfig(
+  fileConfig: Partial<DbdocgenConfig>,
+  cli: CliConfigOptions
+): Partial<DbdocgenConfig> {
   return {
     ...fileConfig,
     schema: cli.schema ?? fileConfig.schema,
@@ -819,6 +877,7 @@ git commit -m "feat: add dbdocgen config loader"
 ## Task 4: SQL Parser and Normalizer
 
 **Files:**
+
 - Create: `fixtures/postgres/basic-schema.sql`
 - Create: `fixtures/mysql/basic-schema.sql`
 - Create: `src/parsers/sql/sql-parser.ts`
@@ -885,8 +944,12 @@ describe("parseSqlSchema", () => {
     const doc = await parseSqlSchema(sql, { dialect: "postgres" });
 
     expect(doc.tables.map((table) => table.name)).toEqual(["users", "orders"]);
-    expect(doc.tables.find((table) => table.name === "users")?.primaryKeys).toEqual(["id"]);
-    expect(doc.tables.find((table) => table.name === "orders")?.foreignKeys[0]).toMatchObject({
+    expect(
+      doc.tables.find((table) => table.name === "users")?.primaryKeys
+    ).toEqual(["id"]);
+    expect(
+      doc.tables.find((table) => table.name === "orders")?.foreignKeys[0]
+    ).toMatchObject({
       columns: ["user_id"],
       referencedTable: "users",
       referencedColumns: ["id"]
@@ -900,9 +963,12 @@ describe("parseSqlSchema", () => {
   });
 
   it("keeps parser warnings instead of throwing for unsupported statements", async () => {
-    const doc = await parseSqlSchema("CREATE TRIGGER ignored_trigger BEFORE INSERT ON users FOR EACH ROW SELECT 1;", {
-      dialect: "postgres"
-    });
+    const doc = await parseSqlSchema(
+      "CREATE TRIGGER ignored_trigger BEFORE INSERT ON users FOR EACH ROW SELECT 1;",
+      {
+        dialect: "postgres"
+      }
+    );
 
     expect(doc.warnings[0]?.code).toBe("UNSUPPORTED_SQL");
   });
@@ -921,7 +987,10 @@ Create `src/parsers/sql/sql-parser.ts`:
 
 ```ts
 import { Parser } from "node-sql-parser";
-import type { DatabaseDialect, DatabaseDoc } from "../../core/model/database-doc";
+import type {
+  DatabaseDialect,
+  DatabaseDoc
+} from "../../core/model/database-doc";
 import { createWarning } from "../../core/warnings";
 import { normalizeSqlAst } from "./sql-normalizer";
 
@@ -929,7 +998,10 @@ export type ParseSqlSchemaOptions = {
   dialect?: DatabaseDialect;
 };
 
-export async function parseSqlSchema(sql: string, options: ParseSqlSchemaOptions = {}): Promise<DatabaseDoc> {
+export async function parseSqlSchema(
+  sql: string,
+  options: ParseSqlSchemaOptions = {}
+): Promise<DatabaseDoc> {
   const dialect = options.dialect ?? "unknown";
   const parser = new Parser();
 
@@ -942,12 +1014,19 @@ export async function parseSqlSchema(sql: string, options: ParseSqlSchemaOptions
       tables: [],
       relationships: [],
       indexes: [],
-      warnings: [createWarning("UNSUPPORTED_SQL", error instanceof Error ? error.message : "Unsupported SQL syntax")]
+      warnings: [
+        createWarning(
+          "UNSUPPORTED_SQL",
+          error instanceof Error ? error.message : "Unsupported SQL syntax"
+        )
+      ]
     };
   }
 }
 
-function mapDialect(dialect: DatabaseDialect): "postgresql" | "mysql" | undefined {
+function mapDialect(
+  dialect: DatabaseDialect
+): "postgresql" | "mysql" | undefined {
   if (dialect === "postgres") return "postgresql";
   if (dialect === "mysql" || dialect === "mariadb") return "mysql";
   return undefined;
@@ -959,11 +1038,20 @@ function mapDialect(dialect: DatabaseDialect): "postgresql" | "mysql" | undefine
 Create `src/parsers/sql/sql-normalizer.ts`:
 
 ```ts
-import type { DatabaseDialect, DatabaseDoc, IndexDoc, RelationshipDoc, TableDoc } from "../../core/model/database-doc";
+import type {
+  DatabaseDialect,
+  DatabaseDoc,
+  IndexDoc,
+  RelationshipDoc,
+  TableDoc
+} from "../../core/model/database-doc";
 
 type AnyAst = Record<string, unknown>;
 
-export function normalizeSqlAst(ast: unknown, dialect: DatabaseDialect): DatabaseDoc {
+export function normalizeSqlAst(
+  ast: unknown,
+  dialect: DatabaseDialect
+): DatabaseDoc {
   const statements = Array.isArray(ast) ? ast : [ast];
   const tables: TableDoc[] = [];
   const indexes: IndexDoc[] = [];
@@ -997,7 +1085,9 @@ export function normalizeSqlAst(ast: unknown, dialect: DatabaseDialect): Databas
 
 function normalizeCreateTable(statement: AnyAst): TableDoc {
   const tableName = extractTableName(statement.table);
-  const createDefinitions = Array.isArray(statement.create_definitions) ? (statement.create_definitions as AnyAst[]) : [];
+  const createDefinitions = Array.isArray(statement.create_definitions)
+    ? (statement.create_definitions as AnyAst[])
+    : [];
 
   const table: TableDoc = {
     name: tableName,
@@ -1011,12 +1101,18 @@ function normalizeCreateTable(statement: AnyAst): TableDoc {
   for (const definition of createDefinitions) {
     if (definition.resource === "column") {
       const columnName = String(definition.column?.column ?? definition.column);
-      const constraints = Array.isArray(definition.constraints) ? (definition.constraints as AnyAst[]) : [];
-      const isPrimaryKey = constraints.some((constraint) => constraint.type === "primary key");
+      const constraints = Array.isArray(definition.constraints)
+        ? (definition.constraints as AnyAst[])
+        : [];
+      const isPrimaryKey = constraints.some(
+        (constraint) => constraint.type === "primary key"
+      );
       table.columns.push({
         name: columnName,
         type: normalizeType(definition.definition),
-        nullable: !constraints.some((constraint) => constraint.type === "not null") && !isPrimaryKey,
+        nullable:
+          !constraints.some((constraint) => constraint.type === "not null") &&
+          !isPrimaryKey,
         defaultValue: extractDefault(constraints),
         isPrimaryKey,
         isForeignKey: false
@@ -1024,19 +1120,32 @@ function normalizeCreateTable(statement: AnyAst): TableDoc {
       if (isPrimaryKey) table.primaryKeys.push(columnName);
     }
 
-    if (definition.resource === "constraint" && definition.constraint_type === "primary key") {
+    if (
+      definition.resource === "constraint" &&
+      definition.constraint_type === "primary key"
+    ) {
       table.primaryKeys = extractColumnNames(definition.definition);
       for (const column of table.columns) {
         if (table.primaryKeys.includes(column.name)) column.isPrimaryKey = true;
       }
     }
 
-    if (definition.resource === "constraint" && definition.constraint_type === "foreign key") {
+    if (
+      definition.resource === "constraint" &&
+      definition.constraint_type === "foreign key"
+    ) {
       const columns = extractColumnNames(definition.definition);
-      const referencedTable = extractTableName(definition.reference_definition?.table);
-      const referencedColumns = extractColumnNames(definition.reference_definition?.definition);
+      const referencedTable = extractTableName(
+        definition.reference_definition?.table
+      );
+      const referencedColumns = extractColumnNames(
+        definition.reference_definition?.definition
+      );
       table.foreignKeys.push({
-        name: typeof definition.constraint === "string" ? definition.constraint : undefined,
+        name:
+          typeof definition.constraint === "string"
+            ? definition.constraint
+            : undefined,
         columns,
         referencedTable,
         referencedColumns
@@ -1065,7 +1174,10 @@ function relationshipsFromTable(table: TableDoc): RelationshipDoc[] {
       fromTable: table.name,
       fromColumn: column,
       toTable: foreignKey.referencedTable,
-      toColumn: foreignKey.referencedColumns[index] ?? foreignKey.referencedColumns[0] ?? "id",
+      toColumn:
+        foreignKey.referencedColumns[index] ??
+        foreignKey.referencedColumns[0] ??
+        "id",
       constraintName: foreignKey.name,
       source: "schema" as const,
       needsReview: false
@@ -1096,15 +1208,21 @@ function extractColumnNames(value: unknown): string[] {
 function normalizeType(value: unknown): string {
   if (typeof value === "object" && value !== null) {
     const object = value as Record<string, unknown>;
-    return String(object.dataType ?? object.type ?? object.name ?? "unknown").toLowerCase();
+    return String(
+      object.dataType ?? object.type ?? object.name ?? "unknown"
+    ).toLowerCase();
   }
   return String(value ?? "unknown").toLowerCase();
 }
 
 function extractDefault(constraints: AnyAst[]): string | undefined {
-  const defaultConstraint = constraints.find((constraint) => constraint.type === "default");
+  const defaultConstraint = constraints.find(
+    (constraint) => constraint.type === "default"
+  );
   if (!defaultConstraint) return undefined;
-  return String(defaultConstraint.value?.value ?? defaultConstraint.value ?? "");
+  return String(
+    defaultConstraint.value?.value ?? defaultConstraint.value ?? ""
+  );
 }
 ```
 
@@ -1150,6 +1268,7 @@ git commit -m "feat: parse SQL schema into normalized metadata"
 ## Task 5: Deterministic Exporters v0.1
 
 **Files:**
+
 - Create: `src/exporters/excel/excel-exporter.ts`
 - Create: `src/exporters/diagram/mermaid-exporter.ts`
 - Test: `tests/exporters/excel-exporter.test.ts`
@@ -1173,7 +1292,15 @@ const doc: DatabaseDoc = {
   tables: [
     {
       name: "users",
-      columns: [{ name: "id", type: "integer", nullable: false, isPrimaryKey: true, isForeignKey: false }],
+      columns: [
+        {
+          name: "id",
+          type: "integer",
+          nullable: false,
+          isPrimaryKey: true,
+          isForeignKey: false
+        }
+      ],
       primaryKeys: ["id"],
       foreignKeys: [],
       indexes: [],
@@ -1190,7 +1317,9 @@ describe("exportExcelDictionary", () => {
     const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
     await exportExcelDictionary(doc, { outDir: dir });
 
-    await expect(stat(join(dir, "database_dictionary.xlsx"))).resolves.toMatchObject({ size: expect.any(Number) });
+    await expect(
+      stat(join(dir, "database_dictionary.xlsx"))
+    ).resolves.toMatchObject({ size: expect.any(Number) });
     await rm(dir, { recursive: true, force: true });
   });
 });
@@ -1216,7 +1345,15 @@ describe("exportMermaidDiagram", () => {
       tables: [
         {
           name: "users",
-          columns: [{ name: "id", type: "integer", nullable: false, isPrimaryKey: true, isForeignKey: false }],
+          columns: [
+            {
+              name: "id",
+              type: "integer",
+              nullable: false,
+              isPrimaryKey: true,
+              isForeignKey: false
+            }
+          ],
           primaryKeys: ["id"],
           foreignKeys: [],
           indexes: [],
@@ -1258,12 +1395,25 @@ export type ExportOptions = {
   outDir: string;
 };
 
-export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOptions): Promise<void> {
+export async function exportExcelDictionary(
+  doc: DatabaseDoc,
+  options: ExportOptions
+): Promise<void> {
   await mkdir(options.outDir, { recursive: true });
   const workbook = new ExcelJS.Workbook();
 
   const tableSheet = workbook.addWorksheet("01_Table_List");
-  tableSheet.addRow(["Table", "Schema", "Comment", "Description", "Description Source", "Confidence", "Need Review", "Column Count", "PK"]);
+  tableSheet.addRow([
+    "Table",
+    "Schema",
+    "Comment",
+    "Description",
+    "Description Source",
+    "Confidence",
+    "Need Review",
+    "Column Count",
+    "PK"
+  ]);
   for (const table of doc.tables) {
     tableSheet.addRow([
       table.name,
@@ -1279,7 +1429,20 @@ export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOpt
   }
 
   const columnSheet = workbook.addWorksheet("02_Column_Dictionary");
-  columnSheet.addRow(["Table", "Column", "Type", "Nullable", "Default", "PK", "FK", "DB Comment", "Description", "Description Source", "Confidence", "Need Review"]);
+  columnSheet.addRow([
+    "Table",
+    "Column",
+    "Type",
+    "Nullable",
+    "Default",
+    "PK",
+    "FK",
+    "DB Comment",
+    "Description",
+    "Description Source",
+    "Confidence",
+    "Need Review"
+  ]);
   for (const table of doc.tables) {
     for (const column of table.columns) {
       columnSheet.addRow([
@@ -1300,7 +1463,15 @@ export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOpt
   }
 
   const relationshipSheet = workbook.addWorksheet("03_Relationships");
-  relationshipSheet.addRow(["From Table", "From Column", "To Table", "To Column", "Constraint Name", "Source", "Need Review"]);
+  relationshipSheet.addRow([
+    "From Table",
+    "From Column",
+    "To Table",
+    "To Column",
+    "Constraint Name",
+    "Source",
+    "Need Review"
+  ]);
   for (const relationship of doc.relationships) {
     relationshipSheet.addRow([
       relationship.fromTable,
@@ -1317,17 +1488,30 @@ export async function exportExcelDictionary(doc: DatabaseDoc, options: ExportOpt
   todoSheet.addRow(["Type", "Target", "Issue", "Suggestion", "Source"]);
   for (const table of doc.tables) {
     for (const todo of table.reviewTodos) {
-      todoSheet.addRow([todo.type, todo.target, todo.issue, todo.suggestion ?? "", todo.source]);
+      todoSheet.addRow([
+        todo.type,
+        todo.target,
+        todo.issue,
+        todo.suggestion ?? "",
+        todo.source
+      ]);
     }
   }
 
   const warningSheet = workbook.addWorksheet("09_Warnings");
   warningSheet.addRow(["Severity", "Code", "Target", "Message"]);
   for (const warning of doc.warnings) {
-    warningSheet.addRow([warning.severity, warning.code, warning.target ?? "", warning.message]);
+    warningSheet.addRow([
+      warning.severity,
+      warning.code,
+      warning.target ?? "",
+      warning.message
+    ]);
   }
 
-  await workbook.xlsx.writeFile(join(options.outDir, "database_dictionary.xlsx"));
+  await workbook.xlsx.writeFile(
+    join(options.outDir, "database_dictionary.xlsx")
+  );
 }
 ```
 
@@ -1344,9 +1528,16 @@ export type DiagramExportOptions = {
   outDir: string;
 };
 
-export async function exportMermaidDiagram(doc: DatabaseDoc, options: DiagramExportOptions): Promise<void> {
+export async function exportMermaidDiagram(
+  doc: DatabaseDoc,
+  options: DiagramExportOptions
+): Promise<void> {
   await mkdir(options.outDir, { recursive: true });
-  await writeFile(join(options.outDir, "er_diagram.mmd"), renderMermaid(doc), "utf8");
+  await writeFile(
+    join(options.outDir, "er_diagram.mmd"),
+    renderMermaid(doc),
+    "utf8"
+  );
 }
 
 export function renderMermaid(doc: DatabaseDoc): string {
@@ -1355,14 +1546,25 @@ export function renderMermaid(doc: DatabaseDoc): string {
   for (const table of doc.tables) {
     lines.push(`  ${table.name} {`);
     for (const column of table.columns) {
-      const markers = [column.isPrimaryKey ? "PK" : "", column.isForeignKey ? "FK" : ""].filter(Boolean).join(" ");
-      lines.push(`    ${sanitizeType(column.type)} ${column.name}${markers ? ` "${markers}"` : ""}`);
+      const markers = [
+        column.isPrimaryKey ? "PK" : "",
+        column.isForeignKey ? "FK" : ""
+      ]
+        .filter(Boolean)
+        .join(" ");
+      lines.push(
+        `    ${sanitizeType(column.type)} ${column.name}${markers ? ` "${markers}"` : ""}`
+      );
     }
     lines.push("  }");
   }
 
-  for (const relationship of doc.relationships.filter((item) => item.source === "schema")) {
-    lines.push(`  ${relationship.toTable} ||--o{ ${relationship.fromTable} : "${relationship.constraintName ?? relationship.fromColumn}"`);
+  for (const relationship of doc.relationships.filter(
+    (item) => item.source === "schema"
+  )) {
+    lines.push(
+      `  ${relationship.toTable} ||--o{ ${relationship.fromTable} : "${relationship.constraintName ?? relationship.fromColumn}"`
+    );
   }
 
   return `${lines.join("\n")}\n`;
@@ -1398,7 +1600,10 @@ export { loadConfig } from "./core/config/loader";
 export type { DbdocgenConfig, OutputFormat } from "./core/config/schema";
 export { parseSqlSchema } from "./parsers/sql/sql-parser";
 export { exportExcelDictionary } from "./exporters/excel/excel-exporter";
-export { exportMermaidDiagram, renderMermaid } from "./exporters/diagram/mermaid-exporter";
+export {
+  exportMermaidDiagram,
+  renderMermaid
+} from "./exporters/diagram/mermaid-exporter";
 ```
 
 - [ ] **Step 7: Verify deterministic exporters**
@@ -1417,6 +1622,7 @@ git commit -m "feat: add Excel and Mermaid exporters"
 ## Task 6: Pipeline and CLI v0.1
 
 **Files:**
+
 - Create: `src/core/pipeline/plugin-types.ts`
 - Create: `src/core/pipeline/generate-db-docs.ts`
 - Create: `src/cli/index.ts`
@@ -1445,7 +1651,9 @@ describe("generateDbDocs", () => {
       ai: { enabled: false }
     });
 
-    await expect(readdir(outDir)).resolves.toEqual(expect.arrayContaining(["database_dictionary.xlsx", "er_diagram.mmd"]));
+    await expect(readdir(outDir)).resolves.toEqual(
+      expect.arrayContaining(["database_dictionary.xlsx", "er_diagram.mmd"])
+    );
     await rm(outDir, { recursive: true, force: true });
   });
 });
@@ -1512,9 +1720,13 @@ export type GenerateDbDocsOptions = {
   };
 };
 
-export async function generateDbDocs(options: GenerateDbDocsOptions): Promise<DatabaseDoc> {
+export async function generateDbDocs(
+  options: GenerateDbDocsOptions
+): Promise<DatabaseDoc> {
   const sql = await readFile(options.schema, "utf8");
-  const doc = await parseSqlSchema(sql, { dialect: options.dialect ?? "postgres" });
+  const doc = await parseSqlSchema(sql, {
+    dialect: options.dialect ?? "postgres"
+  });
 
   if (options.ai.enabled) {
     doc.warnings.push({
@@ -1549,7 +1761,10 @@ import type { OutputFormat } from "../core/config/schema";
 
 const program = new Command();
 
-program.name("dbdocgen").description("Generate database documentation from SQL schema files.").version("0.1.0");
+program
+  .name("dbdocgen")
+  .description("Generate database documentation from SQL schema files.")
+  .version("0.1.0");
 
 program
   .command("generate")
@@ -1628,7 +1843,10 @@ export { generateDbDocs } from "./core/pipeline/generate-db-docs";
 export type { GenerateDbDocsOptions } from "./core/pipeline/generate-db-docs";
 export { parseSqlSchema } from "./parsers/sql/sql-parser";
 export { exportExcelDictionary } from "./exporters/excel/excel-exporter";
-export { exportMermaidDiagram, renderMermaid } from "./exporters/diagram/mermaid-exporter";
+export {
+  exportMermaidDiagram,
+  renderMermaid
+} from "./exporters/diagram/mermaid-exporter";
 ```
 
 - [ ] **Step 7: Verify CLI and pipeline**
@@ -1653,6 +1871,7 @@ git commit -m "feat: add generate pipeline and CLI"
 ## Task 7: Markdown, HTML, and Word Exporters v0.2
 
 **Files:**
+
 - Create: `src/exporters/markdown/markdown-exporter.ts`
 - Create: `src/exporters/html/html-exporter.ts`
 - Create: `src/exporters/word/word-exporter.ts`
@@ -1727,6 +1946,7 @@ git commit -m "feat: add markdown html and word exporters"
 ## Task 8: Source Scanner v0.3
 
 **Files:**
+
 - Create: `fixtures/source/typescript-sample/src/order.service.ts`
 - Create: `src/source-scanner/matcher.ts`
 - Create: `src/source-scanner/scanner.ts`
@@ -1785,10 +2005,17 @@ Expected: FAIL because scanner files do not exist.
 Create `src/source-scanner/matcher.ts`:
 
 ```ts
-export function isLikelyRelatedToTable(filePath: string, content: string, tableName: string): boolean {
+export function isLikelyRelatedToTable(
+  filePath: string,
+  content: string,
+  tableName: string
+): boolean {
   const singular = tableName.endsWith("s") ? tableName.slice(0, -1) : tableName;
   const haystack = `${filePath}\n${content}`.toLowerCase();
-  return haystack.includes(tableName.toLowerCase()) || haystack.includes(singular.toLowerCase());
+  return (
+    haystack.includes(tableName.toLowerCase()) ||
+    haystack.includes(singular.toLowerCase())
+  );
 }
 ```
 
@@ -1825,7 +2052,9 @@ export type ScanSourceContextOptions = {
   maxLinesPerChunk?: number;
 };
 
-export async function scanSourceContext(options: ScanSourceContextOptions): Promise<SourceContext> {
+export async function scanSourceContext(
+  options: ScanSourceContextOptions
+): Promise<SourceContext> {
   const paths = await fg(options.include, {
     cwd: options.rootDir,
     absolute: true,
@@ -1836,7 +2065,9 @@ export async function scanSourceContext(options: ScanSourceContextOptions): Prom
 
   for (const path of paths) {
     const content = await readFile(path, "utf8");
-    const relatedTables = options.tableNames.filter((tableName) => isLikelyRelatedToTable(path, content, tableName));
+    const relatedTables = options.tableNames.filter((tableName) =>
+      isLikelyRelatedToTable(path, content, tableName)
+    );
     if (relatedTables.length === 0) continue;
     files.push({
       path,
@@ -1883,6 +2114,7 @@ git commit -m "feat: add generic source context scanner"
 ## Task 9: AI Rules and Response Validation v0.3
 
 **Files:**
+
 - Create: `src/ai/rules/default-rules.ts`
 - Create: `src/ai/rules/rule-loader.ts`
 - Create: `src/ai/schemas/ai-response.ts`
@@ -1947,6 +2179,7 @@ git commit -m "feat: add AI rules and response validation"
 ## Task 10: 9router OpenAI-Compatible Enrichment v0.3
 
 **Files:**
+
 - Create: `src/ai/providers/openai-compatible.ts`
 - Create: `src/ai/enrichers/schema-enricher.ts`
 - Test: `tests/ai/schema-enricher.test.ts`
@@ -1956,6 +2189,7 @@ git commit -m "feat: add AI rules and response validation"
 - [ ] **Step 1: Write enrichment test with fake provider**
 
 Test that enrichment:
+
 - adds table and column descriptions from validated AI JSON
 - adds `needsReview: true` for low-confidence descriptions
 - never changes table name, column name, type, nullable, PK, FK, index, or constraint facts
@@ -1989,6 +2223,7 @@ Implement `enrichDatabaseDoc(doc, sourceContext, rules, provider)` by enriching 
 - [ ] **Step 5: Wire enrichment into pipeline**
 
 When `ai.enabled` is true:
+
 - scan source context if configured
 - load rules
 - call 9router provider
@@ -2012,6 +2247,7 @@ git commit -m "feat: add OpenAI-compatible AI enrichment"
 ## Task 11: AI Cache, Review TODOs, and Warning Report v0.4
 
 **Files:**
+
 - Create: `src/ai/cache/file-cache.ts`
 - Test: `tests/ai/file-cache.test.ts`
 - Modify: `src/ai/enrichers/schema-enricher.ts`
@@ -2055,6 +2291,7 @@ git commit -m "feat: add AI cache and review reporting"
 ## Task 12: Release Readiness
 
 **Files:**
+
 - Create: `README.md`
 - Create: `.changeset/initial-release.md`
 - Modify: `package.json`
@@ -2062,6 +2299,7 @@ git commit -m "feat: add AI cache and review reporting"
 - [ ] **Step 1: Add README**
 
 Document:
+
 - install command
 - CLI usage for basic, with source+AI, and `--no-ai`
 - config file example

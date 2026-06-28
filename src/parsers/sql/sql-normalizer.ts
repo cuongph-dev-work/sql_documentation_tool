@@ -3,14 +3,16 @@ import type {
   DatabaseDoc,
   IndexDoc,
   RelationshipDoc,
-  ReviewTodo,
   TableDoc,
   WarningDoc
 } from "../../core/model/database-doc";
 
 type AnyAst = Record<string, unknown>;
 
-export function normalizeSqlAst(ast: unknown, dialect: DatabaseDialect): DatabaseDoc {
+export function normalizeSqlAst(
+  ast: unknown,
+  dialect: DatabaseDialect
+): DatabaseDoc {
   const statements = Array.isArray(ast) ? ast : [ast];
   const tables: TableDoc[] = [];
   const indexes: IndexDoc[] = [];
@@ -47,7 +49,9 @@ export function normalizeSqlAst(ast: unknown, dialect: DatabaseDialect): Databas
 
 function normalizeCreateTable(statement: AnyAst): TableDoc {
   const tableName = extractTableName(statement.table);
-  const createDefinitions = Array.isArray(statement.create_definitions) ? (statement.create_definitions as AnyAst[]) : [];
+  const createDefinitions = Array.isArray(statement.create_definitions)
+    ? (statement.create_definitions as AnyAst[])
+    : [];
 
   const table: TableDoc = {
     name: tableName,
@@ -75,20 +79,29 @@ function normalizeCreateTable(statement: AnyAst): TableDoc {
       if (isPrimaryKey) table.primaryKeys.push(columnName);
     }
 
-    if (definition.resource === "constraint" && isConstraintType(definition.constraint_type, "PRIMARY KEY")) {
+    if (
+      definition.resource === "constraint" &&
+      isConstraintType(definition.constraint_type, "PRIMARY KEY")
+    ) {
       table.primaryKeys = extractDeepColumnNames(definition.definition);
       for (const column of table.columns) {
         if (table.primaryKeys.includes(column.name)) column.isPrimaryKey = true;
       }
     }
 
-    if (definition.resource === "constraint" && isConstraintType(definition.constraint_type, "FOREIGN KEY")) {
+    if (
+      definition.resource === "constraint" &&
+      isConstraintType(definition.constraint_type, "FOREIGN KEY")
+    ) {
       const columns = extractDeepColumnNames(definition.definition);
       const refDef = definition.reference_definition as AnyAst | undefined;
       const referencedTable = extractTableName(refDef?.table);
       const referencedColumns = extractDeepColumnNames(refDef?.definition);
       table.foreignKeys.push({
-        name: typeof definition.constraint === "string" ? definition.constraint : undefined,
+        name:
+          typeof definition.constraint === "string"
+            ? definition.constraint
+            : undefined,
         columns,
         referencedTable,
         referencedColumns
@@ -106,7 +119,9 @@ function normalizeCreateIndex(statement: AnyAst): IndexDoc {
   return {
     name: String(statement.index ?? statement.index_name ?? "unnamed_index"),
     table: extractTableName(statement.table),
-    columns: extractDeepColumnNames(statement.index_columns ?? statement.columns),
+    columns: extractDeepColumnNames(
+      statement.index_columns ?? statement.columns
+    ),
     unique: Boolean(statement.unique)
   };
 }
@@ -171,7 +186,8 @@ function extractTableName(value: unknown): string {
 }
 
 function extractDeepColumnName(value: unknown): string {
-  if (typeof value !== "object" || value === null) return String(value ?? "unknown");
+  if (typeof value !== "object" || value === null)
+    return String(value ?? "unknown");
   const object = value as Record<string, unknown>;
 
   if (object.expr && typeof object.expr === "object") {
@@ -197,20 +213,30 @@ function extractDeepColumnNames(value: unknown): string[] {
 function normalizeType(value: unknown): string {
   if (typeof value === "object" && value !== null) {
     const object = value as Record<string, unknown>;
-    return String(object.dataType ?? object.type ?? object.name ?? "unknown").toLowerCase();
+    return String(
+      object.dataType ?? object.type ?? object.name ?? "unknown"
+    ).toLowerCase();
   }
   return String(value ?? "unknown").toLowerCase();
 }
 
 function hasPrimaryKey(def: AnyAst): boolean {
   if (def.primary_key) return true;
-  if (def.constraint_type && isConstraintType(def.constraint_type, "PRIMARY KEY")) return true;
+  if (
+    def.constraint_type &&
+    isConstraintType(def.constraint_type, "PRIMARY KEY")
+  )
+    return true;
   return false;
 }
 
 function hasNotNull(def: AnyAst): boolean {
   if (!def.nullable) return false;
-  if (typeof def.nullable === "object" && (def.nullable as AnyAst).type === "not null") return true;
+  if (
+    typeof def.nullable === "object" &&
+    (def.nullable as AnyAst).type === "not null"
+  )
+    return true;
   if (String(def.nullable) === "not null") return true;
   return false;
 }
@@ -228,7 +254,7 @@ function extractDefaultFromDef(def: AnyAst): string | undefined {
       const val = defaultVal.value as AnyAst;
       if (val.type === "function" && val.name) {
         const name = val.name as AnyAst;
-        const parts = Array.isArray(name.name) ? name.name as AnyAst[] : [];
+        const parts = Array.isArray(name.name) ? (name.name as AnyAst[]) : [];
         return parts.map((p) => String(p.value ?? "")).join("");
       }
       if (val.type === "single_quote_string") {

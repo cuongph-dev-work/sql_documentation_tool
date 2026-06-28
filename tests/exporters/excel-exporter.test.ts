@@ -10,7 +10,15 @@ const doc: DatabaseDoc = {
   tables: [
     {
       name: "users",
-      columns: [{ name: "id", type: "integer", nullable: false, isPrimaryKey: true, isForeignKey: false }],
+      columns: [
+        {
+          name: "id",
+          type: "integer",
+          nullable: false,
+          isPrimaryKey: true,
+          isForeignKey: false
+        }
+      ],
       primaryKeys: ["id"],
       foreignKeys: [],
       indexes: [],
@@ -27,7 +35,9 @@ describe("exportExcelDictionary", () => {
     const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
     await exportExcelDictionary(doc, { outDir: dir });
 
-    await expect(stat(join(dir, "database_dictionary.xlsx"))).resolves.toMatchObject({ size: expect.any(Number) });
+    await expect(
+      stat(join(dir, "database_dictionary.xlsx"))
+    ).resolves.toMatchObject({ size: expect.any(Number) });
     await rm(dir, { recursive: true, force: true });
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { DatabaseDoc, TableDoc } from "../../src/core/model/database-doc";
+import type { DatabaseDoc } from "../../src/core/model/database-doc";
+import type { callAiProvider } from "../../src/ai/providers/openai-compatible";
 
 function makeFakeProvider(response: string) {
   return (_config: unknown, _options: unknown) => Promise.resolve(response);
@@ -9,7 +10,10 @@ function makeFakeProviderThrows(error: Error) {
   return (_config: unknown, _options: unknown) => Promise.reject(error);
 }
 
-function makeFakeProviderFetch(returnedTable: string, extra: Record<string, unknown> = {}) {
+function makeFakeProviderFetch(
+  returnedTable: string,
+  extra: Record<string, unknown> = {}
+) {
   const response = {
     table: returnedTable,
     purpose: "AI-inferred purpose for this table.",
@@ -31,7 +35,8 @@ function makeFakeProviderFetch(returnedTable: string, extra: Record<string, unkn
     reviewTodos: ["Verify purpose of the name column."],
     ...extra
   };
-  return (_config: unknown, _options: unknown) => Promise.resolve(JSON.stringify(response));
+  return (_config: unknown, _options: unknown) =>
+    Promise.resolve(JSON.stringify(response));
 }
 
 describe("schema-enricher", () => {
@@ -42,7 +47,8 @@ describe("schema-enricher", () => {
   it("enrichment adds descriptions to a table via a fake provider", async () => {
     // Dynamic import to avoid compile errors before the module exists.
     // We need to re-import inside the test after writing the module.
-    const { enrichDatabaseDoc } = await import("../../src/ai/enrichers/schema-enricher");
+    const { enrichDatabaseDoc } =
+      await import("../../src/ai/enrichers/schema-enricher");
 
     const doc: DatabaseDoc = {
       dialect: "postgres",
@@ -89,8 +95,13 @@ describe("schema-enricher", () => {
     const result = await enrichDatabaseDoc({
       doc,
       providerConfig,
-      rules: { "system.md": "You are a helpful DB documenter.", "table-enrich.md": "Describe the table.", "column-enrich.md": "Describe columns." },
-      provider: provider as unknown as typeof import("../../src/ai/providers/openai-compatible").callAiProvider
+      rules: {
+        "system.md": "You are a helpful DB documenter.",
+        "table-enrich.md": "Describe the table.",
+        "column-enrich.md": "Describe columns."
+      },
+      provider:
+        provider as unknown as typeof callAiProvider
     });
 
     expect(result.tables).toHaveLength(1);
@@ -98,7 +109,9 @@ describe("schema-enricher", () => {
 
     // Description should be enriched
     expect(table.description).toBeDefined();
-    expect(table.description?.value).toBe("AI-inferred purpose for this table.");
+    expect(table.description?.value).toBe(
+      "AI-inferred purpose for this table."
+    );
     expect(table.description?.source).toBe("ai");
     expect(table.description?.confidence).toBe("high");
 
@@ -116,13 +129,16 @@ describe("schema-enricher", () => {
 
     // Review todos should be added
     expect(table.reviewTodos).toHaveLength(1);
-    expect(table.reviewTodos[0].issue).toBe("Verify purpose of the name column.");
+    expect(table.reviewTodos[0].issue).toBe(
+      "Verify purpose of the name column."
+    );
     expect(table.reviewTodos[0].type).toBe("ai");
     expect(table.reviewTodos[0].source).toBe("ai");
   });
 
   it("never modifies DB facts (name, type, nullable, PK, FK, default, index)", async () => {
-    const { enrichDatabaseDoc } = await import("../../src/ai/enrichers/schema-enricher");
+    const { enrichDatabaseDoc } =
+      await import("../../src/ai/enrichers/schema-enricher");
 
     const doc: DatabaseDoc = {
       dialect: "postgres",
@@ -150,10 +166,20 @@ describe("schema-enricher", () => {
           ],
           primaryKeys: ["id"],
           foreignKeys: [
-            { name: "fk_orders_user", columns: ["user_id"], referencedTable: "users", referencedColumns: ["id"] }
+            {
+              name: "fk_orders_user",
+              columns: ["user_id"],
+              referencedTable: "users",
+              referencedColumns: ["id"]
+            }
           ],
           indexes: [
-            { name: "idx_orders_created_at", table: "orders", columns: ["created_at"], unique: false }
+            {
+              name: "idx_orders_created_at",
+              table: "orders",
+              columns: ["created_at"],
+              unique: false
+            }
           ],
           reviewTodos: []
         }
@@ -184,7 +210,8 @@ describe("schema-enricher", () => {
       doc,
       providerConfig,
       rules: { "system.md": "", "table-enrich.md": "", "column-enrich.md": "" },
-      provider: provider as unknown as typeof import("../../src/ai/providers/openai-compatible").callAiProvider
+      provider:
+        provider as unknown as typeof callAiProvider
     });
 
     expect(result.tables).toHaveLength(1);
@@ -221,7 +248,8 @@ describe("schema-enricher", () => {
   });
 
   it("invalid AI JSON returns a warning and does not crash", async () => {
-    const { enrichDatabaseDoc } = await import("../../src/ai/enrichers/schema-enricher");
+    const { enrichDatabaseDoc } =
+      await import("../../src/ai/enrichers/schema-enricher");
 
     const doc: DatabaseDoc = {
       dialect: "postgres",
@@ -262,7 +290,8 @@ describe("schema-enricher", () => {
       doc,
       providerConfig,
       rules: { "system.md": "", "table-enrich.md": "", "column-enrich.md": "" },
-      provider: provider as unknown as typeof import("../../src/ai/providers/openai-compatible").callAiProvider
+      provider:
+        provider as unknown as typeof callAiProvider
     });
 
     // Should not crash
@@ -274,13 +303,16 @@ describe("schema-enricher", () => {
     expect(table.comment).toBe("Product catalog");
 
     // Should have a warning
-    const warnings = result.warnings.filter((w) => w.code === "AI_ENRICH_FAILED");
+    const warnings = result.warnings.filter(
+      (w) => w.code === "AI_ENRICH_FAILED"
+    );
     expect(warnings.length).toBeGreaterThanOrEqual(1);
     expect(warnings[0].message).toContain("products");
   });
 
   it("API error returns a warning and does not crash", async () => {
-    const { enrichDatabaseDoc } = await import("../../src/ai/enrichers/schema-enricher");
+    const { enrichDatabaseDoc } =
+      await import("../../src/ai/enrichers/schema-enricher");
 
     const doc: DatabaseDoc = {
       dialect: "postgres",
@@ -320,7 +352,8 @@ describe("schema-enricher", () => {
       doc,
       providerConfig,
       rules: { "system.md": "", "table-enrich.md": "", "column-enrich.md": "" },
-      provider: provider as unknown as typeof import("../../src/ai/providers/openai-compatible").callAiProvider
+      provider:
+        provider as unknown as typeof callAiProvider
     });
 
     // Should not crash
@@ -328,14 +361,17 @@ describe("schema-enricher", () => {
     expect(result.tables[0].name).toBe("categories");
 
     // Should have a warning about the error
-    const warnings = result.warnings.filter((w) => w.code === "AI_ENRICH_FAILED");
+    const warnings = result.warnings.filter(
+      (w) => w.code === "AI_ENRICH_FAILED"
+    );
     expect(warnings.length).toBeGreaterThanOrEqual(1);
     expect(warnings[0].message).toContain("categories");
     expect(warnings[0].message).toContain("Network error");
   });
 
   it("high confidence sets needsReview to false, low confidence sets it to true", async () => {
-    const { enrichDatabaseDoc } = await import("../../src/ai/enrichers/schema-enricher");
+    const { enrichDatabaseDoc } =
+      await import("../../src/ai/enrichers/schema-enricher");
 
     const doc: DatabaseDoc = {
       dialect: "postgres",
@@ -385,7 +421,8 @@ describe("schema-enricher", () => {
       doc,
       providerConfig,
       rules: { "system.md": "", "table-enrich.md": "", "column-enrich.md": "" },
-      provider: provider as unknown as typeof import("../../src/ai/providers/openai-compatible").callAiProvider
+      provider:
+        provider as unknown as typeof callAiProvider
     });
 
     const table = result.tables[0];
@@ -401,7 +438,8 @@ describe("schema-enricher", () => {
   });
 
   it("handles missing columnDescriptions gracefully", async () => {
-    const { enrichDatabaseDoc } = await import("../../src/ai/enrichers/schema-enricher");
+    const { enrichDatabaseDoc } =
+      await import("../../src/ai/enrichers/schema-enricher");
 
     const doc: DatabaseDoc = {
       dialect: "postgres",
@@ -444,11 +482,14 @@ describe("schema-enricher", () => {
       doc,
       providerConfig,
       rules: { "system.md": "", "table-enrich.md": "", "column-enrich.md": "" },
-      provider: provider as unknown as typeof import("../../src/ai/providers/openai-compatible").callAiProvider
+      provider:
+        provider as unknown as typeof callAiProvider
     });
 
     expect(result.tables).toHaveLength(1);
-    expect(result.tables[0].description?.value).toBe("Key-value settings store.");
+    expect(result.tables[0].description?.value).toBe(
+      "Key-value settings store."
+    );
     expect(result.warnings).toHaveLength(0);
   });
 });

@@ -12,7 +12,9 @@ export const aiTableEnrichResponseSchema = z.object({
   purpose: z.string().optional(),
   confidence: z.enum(["high", "medium", "low"]),
   businessNotes: z.array(z.string()).optional(),
-  columnDescriptions: z.record(z.string(), aiColumnDescriptionSchema).optional(),
+  columnDescriptions: z
+    .record(z.string(), aiColumnDescriptionSchema)
+    .optional(),
   reviewTodos: z.array(z.string()).optional()
 });
 

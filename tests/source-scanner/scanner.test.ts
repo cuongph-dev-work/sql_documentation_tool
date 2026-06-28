@@ -8,7 +8,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 describe("scanSourceContext", () => {
   it("finds source files related to table names", async () => {
     const context = await scanSourceContext({
-      rootDir: resolve(__dirname, "../../fixtures/source/typescript-sample/src"),
+      rootDir: resolve(
+        __dirname,
+        "../../fixtures/source/typescript-sample/src"
+      ),
       include: ["**/*.ts"],
       exclude: [],
       tableNames: ["orders"]

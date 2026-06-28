@@ -70,7 +70,14 @@ export const tableDocSchema = z.object({
 });
 
 export const databaseDocSchema = z.object({
-  dialect: z.enum(["postgres", "mysql", "mariadb", "sqlite", "mssql", "unknown"]),
+  dialect: z.enum([
+    "postgres",
+    "mysql",
+    "mariadb",
+    "sqlite",
+    "mssql",
+    "unknown"
+  ]),
   tables: z.array(tableDocSchema),
   relationships: z.array(relationshipDocSchema),
   indexes: z.array(indexDocSchema),

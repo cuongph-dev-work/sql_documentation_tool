@@ -9,7 +9,7 @@ export type HtmlExportOptions = {
 
 export async function exportHtmlDocs(
   doc: DatabaseDoc,
-  options: HtmlExportOptions,
+  options: HtmlExportOptions
 ): Promise<void> {
   try {
     await mkdir(options.outDir, { recursive: true });
@@ -17,23 +17,19 @@ export async function exportHtmlDocs(
     const tablesDir = join(htmlDir, "tables");
     await mkdir(tablesDir, { recursive: true });
 
-    await writeFile(
-      join(htmlDir, "index.html"),
-      renderIndexPage(doc),
-      "utf8",
-    );
+    await writeFile(join(htmlDir, "index.html"), renderIndexPage(doc), "utf8");
 
     for (const table of doc.tables) {
       await writeFile(
         join(tablesDir, `${sanitizeFilename(table.name)}.html`),
         renderTablePage(table, doc),
-        "utf8",
+        "utf8"
       );
     }
   } catch (err) {
     throw new Error(
       `Failed to export HTML docs: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
+      { cause: err }
     );
   }
 }
@@ -101,15 +97,16 @@ function renderIndexPage(doc: DatabaseDoc): string {
     }
   }
 
-  const warningsSection = doc.warnings.length > 0
-    ? `
+  const warningsSection =
+    doc.warnings.length > 0
+      ? `
   <h2>Warnings</h2>
   <table>
     <thead><tr><th>Severity</th><th>Code</th><th>Target</th><th>Message</th></tr></thead>
     <tbody>
 ${warningRows}    </tbody>
   </table>`
-    : `
+      : `
   <h2>Warnings</h2>
   <p>(none)</p>`;
 
@@ -161,14 +158,12 @@ function renderTablePage(table: TableDoc, doc: DatabaseDoc): string {
   }
 
   // Indexes
-  const tableIndexes = doc.indexes.filter(
-    (idx) => idx.table === table.name,
-  );
+  const tableIndexes = doc.indexes.filter((idx) => idx.table === table.name);
   const allIndexes = [
     ...table.indexes,
     ...tableIndexes.filter(
-      (idx) => !table.indexes.some((ti) => ti.name === idx.name),
-    ),
+      (idx) => !table.indexes.some((ti) => ti.name === idx.name)
+    )
   ];
   let idxList = "";
   if (allIndexes.length > 0) {
@@ -182,7 +177,7 @@ function renderTablePage(table: TableDoc, doc: DatabaseDoc): string {
 
   // Relationships
   const tableRels = doc.relationships.filter(
-    (rel) => rel.fromTable === table.name || rel.toTable === table.name,
+    (rel) => rel.fromTable === table.name || rel.toTable === table.name
   );
   let relList = "";
   if (tableRels.length > 0) {

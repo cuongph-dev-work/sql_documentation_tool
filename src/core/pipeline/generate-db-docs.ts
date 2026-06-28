@@ -38,22 +38,41 @@ export type GenerateDbDocsOptions = {
   };
 };
 
-export async function generateDbDocs(options: GenerateDbDocsOptions): Promise<DatabaseDoc> {
+export async function generateDbDocs(
+  options: GenerateDbDocsOptions
+): Promise<DatabaseDoc> {
   const sql = await readFile(options.schema, "utf8");
-  let doc = await parseSqlSchema(sql, { dialect: options.dialect ?? "postgres" });
+  let doc = await parseSqlSchema(sql, {
+    dialect: options.dialect ?? "postgres"
+  });
 
   if (options.ai.enabled) {
     try {
       const rules = await loadAiRules(options.ai.rulesDir);
-      const apiKey = process.env[options.ai.apiKeyEnv ?? "NINE_ROUTER_API_KEY"] ?? "";
+      const apiKey =
+        process.env[options.ai.apiKeyEnv ?? "NINE_ROUTER_API_KEY"] ?? "";
 
       let sourceContext;
       if (options.context?.source?.enabled) {
         const tableNames = doc.tables.map((t) => t.name);
         sourceContext = await scanSourceContext({
           rootDir: options.context.source.rootDir ?? "./src",
-          include: options.context.source.include ?? ["**/*.ts", "**/*.js", "**/*.rb", "**/*.php", "**/*.py", "**/*.java"],
-          exclude: options.context.source.exclude ?? ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.next/**", "**/coverage/**", "**/.git/**"],
+          include: options.context.source.include ?? [
+            "**/*.ts",
+            "**/*.js",
+            "**/*.rb",
+            "**/*.php",
+            "**/*.py",
+            "**/*.java"
+          ],
+          exclude: options.context.source.exclude ?? [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/.next/**",
+            "**/coverage/**",
+            "**/.git/**"
+          ],
           tableNames
         });
       }

@@ -16,7 +16,7 @@ const doc: DatabaseDoc = {
           type: "integer",
           nullable: false,
           isPrimaryKey: true,
-          isForeignKey: false,
+          isForeignKey: false
         },
         {
           name: "email",
@@ -24,8 +24,8 @@ const doc: DatabaseDoc = {
           nullable: false,
           isPrimaryKey: false,
           isForeignKey: false,
-          comment: "user email address",
-        },
+          comment: "user email address"
+        }
       ],
       primaryKeys: ["id"],
       foreignKeys: [],
@@ -34,33 +34,30 @@ const doc: DatabaseDoc = {
           name: "idx_users_email",
           table: "users",
           columns: ["email"],
-          unique: true,
-        },
+          unique: true
+        }
       ],
-      reviewTodos: [],
-    },
+      reviewTodos: []
+    }
   ],
   relationships: [],
   indexes: [],
-  warnings: [],
+  warnings: []
 };
 
 describe("exportMarkdownDocs", () => {
   it("writes DATABASE.md and tables/users.md with content", async () => {
-    const { exportMarkdownDocs } = await import(
-      "../../src/exporters/markdown/markdown-exporter"
-    );
+    const { exportMarkdownDocs } =
+      await import("../../src/exporters/markdown/markdown-exporter");
     const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
     await exportMarkdownDocs(doc, { outDir: dir });
 
     await expect(stat(join(dir, "DATABASE.md"))).resolves.toMatchObject({
-      size: expect.any(Number),
+      size: expect.any(Number)
     });
-    await expect(stat(join(dir, "tables", "users.md"))).resolves.toMatchObject(
-      {
-        size: expect.any(Number),
-      },
-    );
+    await expect(stat(join(dir, "tables", "users.md"))).resolves.toMatchObject({
+      size: expect.any(Number)
+    });
 
     const overviewContent = await readFile(join(dir, "DATABASE.md"), "utf8");
     expect(overviewContent).toContain("users");
@@ -68,7 +65,7 @@ describe("exportMarkdownDocs", () => {
     // Content validation: column names
     const tableContent = await readFile(
       join(dir, "tables", "users.md"),
-      "utf8",
+      "utf8"
     );
     expect(tableContent).toContain("id");
     expect(tableContent).toContain("email");
@@ -76,7 +73,7 @@ describe("exportMarkdownDocs", () => {
 
     // Content validation: markdown table header
     expect(tableContent).toContain(
-      "| Name | Type | Nullable | Default | PK | FK | Comment |",
+      "| Name | Type | Nullable | Default | PK | FK | Comment |"
     );
 
     await rm(dir, { recursive: true, force: true });
@@ -91,9 +88,8 @@ describe("exportMarkdownDocs", () => {
   });
 
   it("escapes all markdown formatting characters", async () => {
-    const { exportMarkdownDocs } = await import(
-      "../../src/exporters/markdown/markdown-exporter"
-    );
+    const { exportMarkdownDocs } =
+      await import("../../src/exporters/markdown/markdown-exporter");
 
     const testDoc: DatabaseDoc = {
       dialect: "postgres",
@@ -107,18 +103,18 @@ describe("exportMarkdownDocs", () => {
               nullable: true,
               isPrimaryKey: false,
               isForeignKey: false,
-              comment: "text with *bold* and `code` and [link]",
-            },
+              comment: "text with *bold* and `code` and [link]"
+            }
           ],
           primaryKeys: [],
           foreignKeys: [],
           indexes: [],
-          reviewTodos: [],
-        },
+          reviewTodos: []
+        }
       ],
       relationships: [],
       indexes: [],
-      warnings: [],
+      warnings: []
     };
 
     const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
@@ -126,7 +122,7 @@ describe("exportMarkdownDocs", () => {
 
     const content = await readFile(
       join(dir, "tables", "test_table.md"),
-      "utf8",
+      "utf8"
     );
 
     // The asterisks and backticks and brackets should be escaped with backslashes

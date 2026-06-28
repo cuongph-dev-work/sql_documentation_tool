@@ -1,4 +1,10 @@
-export type DatabaseDialect = "postgres" | "mysql" | "mariadb" | "sqlite" | "mssql" | "unknown";
+export type DatabaseDialect =
+  | "postgres"
+  | "mysql"
+  | "mariadb"
+  | "sqlite"
+  | "mssql"
+  | "unknown";
 
 export type Confidence = "high" | "medium" | "low";
 

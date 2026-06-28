@@ -15,31 +15,28 @@ const doc: DatabaseDoc = {
           type: "integer",
           nullable: false,
           isPrimaryKey: true,
-          isForeignKey: false,
-        },
+          isForeignKey: false
+        }
       ],
       primaryKeys: ["id"],
       foreignKeys: [],
       indexes: [],
-      reviewTodos: [],
-    },
+      reviewTodos: []
+    }
   ],
   relationships: [],
   indexes: [],
-  warnings: [],
+  warnings: []
 };
 
 describe("exportWordDocument", () => {
   it("writes database_document.docx with non-zero size", async () => {
-    const { exportWordDocument } = await import(
-      "../../src/exporters/word/word-exporter"
-    );
+    const { exportWordDocument } =
+      await import("../../src/exporters/word/word-exporter");
     const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
     await exportWordDocument(doc, { outDir: dir });
 
-    const fileStat = await stat(
-      join(dir, "database_document.docx"),
-    );
+    const fileStat = await stat(join(dir, "database_document.docx"));
     expect(fileStat.size).toBeGreaterThan(0);
 
     await rm(dir, { recursive: true, force: true });

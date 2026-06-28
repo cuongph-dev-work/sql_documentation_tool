@@ -285,7 +285,7 @@ import OpenAI from "openai";
 
 const client = new OpenAI({
   apiKey: process.env[config.ai.apiKeyEnv],
-  baseURL: config.ai.baseURL,
+  baseURL: config.ai.baseURL
 });
 ```
 
@@ -566,7 +566,7 @@ await generateDbDocs({
   schema: "./database/schema.sql",
   source: {
     enabled: true,
-    rootDir: "./src",
+    rootDir: "./src"
   },
   outDir: "./docs/db",
   formats: ["excel", "markdown", "html", "diagram", "word"],
@@ -575,8 +575,8 @@ await generateDbDocs({
     provider: "9router",
     baseURL: "http://localhost:20128/v1",
     apiKeyEnv: "NINE_ROUTER_API_KEY",
-    model: "openai/gpt-4.1-mini",
-  },
+    model: "openai/gpt-4.1-mini"
+  }
 });
 ```
 
