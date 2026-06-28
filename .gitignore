@@ -5,3 +5,5 @@ coverage/
 .env.*
 docs/db/
 .dbdocgen-cache/
+dbdocgen.config.json
+output/

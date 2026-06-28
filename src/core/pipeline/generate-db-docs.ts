@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { OutputFormat } from "../config/schema";
+import type { OutputFormat, OutputLanguage } from "../config/schema";
 import type { DatabaseDialect, DatabaseDoc } from "../model/database-doc";
 import { exportMermaidDiagram } from "../../exporters/diagram/mermaid-exporter";
 import { exportExcelDictionary } from "../../exporters/excel/excel-exporter";
@@ -7,9 +7,6 @@ import { exportMarkdownDocs } from "../../exporters/markdown/markdown-exporter";
 import { exportHtmlDocs } from "../../exporters/html/html-exporter";
 import { exportWordDocument } from "../../exporters/word/word-exporter";
 import { parseSqlSchema } from "../../parsers/sql/sql-parser";
-import { enrichDatabaseDoc } from "../../ai/enrichers/schema-enricher";
-import { loadAiRules } from "../../ai/rules/rule-loader";
-import { scanSourceContext } from "../../source-scanner/scanner";
 
 export type GenerateDbDocsOptions = {
   schema: string;
@@ -17,86 +14,37 @@ export type GenerateDbDocsOptions = {
   dialect?: DatabaseDialect;
   output: {
     formats: OutputFormat[];
+    language?: OutputLanguage;
   };
-  ai: {
-    enabled: boolean;
-    provider?: string;
-    baseURL?: string;
-    apiKeyEnv?: string;
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-    rulesDir?: string;
-  };
-  context?: {
-    source?: {
-      enabled?: boolean;
-      rootDir?: string;
-      include?: string[];
-      exclude?: string[];
-    };
-  };
+  onProgress?: (event: {
+    step: string;
+    message: string;
+    detail?: Record<string, unknown>;
+  }) => void;
 };
 
 export async function generateDbDocs(
   options: GenerateDbDocsOptions
 ): Promise<DatabaseDoc> {
+  const progress = (
+    step: string,
+    message: string,
+    detail?: Record<string, unknown>
+  ) => {
+    options.onProgress?.({ step, message, detail });
+  };
+
+  progress("read_schema", "Reading schema file", { schema: options.schema });
   const sql = await readFile(options.schema, "utf8");
+  progress("parse_schema", "Parsing schema", { dialect: options.dialect ?? "auto-detect" });
   let doc = await parseSqlSchema(sql, {
-    dialect: options.dialect ?? "postgres"
+    dialect: options.dialect
   });
-
-  if (options.ai.enabled) {
-    try {
-      const rules = await loadAiRules(options.ai.rulesDir);
-      const apiKey =
-        process.env[options.ai.apiKeyEnv ?? "NINE_ROUTER_API_KEY"] ?? "";
-
-      let sourceContext;
-      if (options.context?.source?.enabled) {
-        const tableNames = doc.tables.map((t) => t.name);
-        sourceContext = await scanSourceContext({
-          rootDir: options.context.source.rootDir ?? "./src",
-          include: options.context.source.include ?? [
-            "**/*.ts",
-            "**/*.js",
-            "**/*.rb",
-            "**/*.php",
-            "**/*.py",
-            "**/*.java"
-          ],
-          exclude: options.context.source.exclude ?? [
-            "**/node_modules/**",
-            "**/dist/**",
-            "**/build/**",
-            "**/.next/**",
-            "**/coverage/**",
-            "**/.git/**"
-          ],
-          tableNames
-        });
-      }
-
-      doc = await enrichDatabaseDoc({
-        doc,
-        providerConfig: {
-          apiKey,
-          baseURL: options.ai.baseURL,
-          model: options.ai.model ?? "openai/gpt-4.1-mini",
-          temperature: options.ai.temperature,
-          maxTokens: options.ai.maxTokens
-        },
-        rules,
-        sourceContext: sourceContext ?? undefined
-      });
-    } catch (err) {
-      doc.warnings.push({
-        code: "AI_ENRICH_FAILED",
-        message: `AI enrichment pipeline failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-        severity: "error"
-      });
-    }
-  }
+  progress("schema_parsed", "Schema parsed", {
+    tables: doc.tables.length,
+    warnings: doc.warnings.length,
+    dialect: doc.dialect
+  });
 
   const exporters: Array<{
     format: OutputFormat;
@@ -106,7 +54,11 @@ export async function generateDbDocs(
   if (options.output.formats.includes("excel")) {
     exporters.push({
       format: "excel",
-      fn: () => exportExcelDictionary(doc, { outDir: options.outDir })
+      fn: () =>
+        exportExcelDictionary(doc, {
+          outDir: options.outDir,
+          language: options.output.language
+        })
     });
   }
 
@@ -120,34 +72,60 @@ export async function generateDbDocs(
   if (options.output.formats.includes("markdown")) {
     exporters.push({
       format: "markdown",
-      fn: () => exportMarkdownDocs(doc, { outDir: options.outDir })
+      fn: () =>
+        exportMarkdownDocs(doc, {
+          outDir: options.outDir,
+          language: options.output.language
+        })
     });
   }
 
   if (options.output.formats.includes("html")) {
     exporters.push({
       format: "html",
-      fn: () => exportHtmlDocs(doc, { outDir: options.outDir })
+      fn: () =>
+        exportHtmlDocs(doc, {
+          outDir: options.outDir,
+          language: options.output.language
+        })
     });
   }
 
   if (options.output.formats.includes("word")) {
     exporters.push({
       format: "word",
-      fn: () => exportWordDocument(doc, { outDir: options.outDir })
+      fn: () =>
+        exportWordDocument(doc, {
+          outDir: options.outDir,
+          language: options.output.language
+        })
     });
   }
 
   for (const { format, fn } of exporters) {
     try {
+      progress(`export_${format}`, `Exporting ${format} output`, {
+        outDir: options.outDir
+      });
       await fn();
+      progress(`export_${format}_done`, `Exported ${format} output`, {
+        outDir: options.outDir
+      });
     } catch (err) {
       console.error(
         `[dbdocgen] Failed to export ${format} docs:`,
         err instanceof Error ? err.message : String(err)
       );
+      progress(`export_${format}_failed`, `Failed to export ${format}`, {
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
   }
 
+  progress("complete", "Generation complete", {
+    tables: doc.tables.length,
+    warnings: doc.warnings.length,
+    outDir: options.outDir
+  });
   return doc;
 }

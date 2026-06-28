@@ -36,4 +36,56 @@ describe("parseSqlSchema", () => {
 
     expect(doc.warnings[0]?.code).toBe("UNSUPPORTED_SQL");
   });
+
+  it("parses MySQL auto_increment schema when dialect is mysql", async () => {
+    const sql = `
+      CREATE TABLE address_detail (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        address_street VARCHAR(128) NOT NULL
+      );
+    `;
+
+    const doc = await parseSqlSchema(sql, { dialect: "mysql" });
+
+    expect(doc.warnings).toEqual([]);
+    expect(doc.tables.map((table) => table.name)).toEqual(["address_detail"]);
+    expect(doc.tables[0]?.columns.map((column) => column.name)).toEqual([
+      "id",
+      "address_street"
+    ]);
+  });
+
+  it("auto-detects MySQL dialect when none is provided", async () => {
+    const sql = `
+      CREATE TABLE address_detail (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        address_street VARCHAR(128) NOT NULL
+      );
+    `;
+
+    const doc = await parseSqlSchema(sql);
+
+    expect(doc.dialect).toBe("mysql");
+    expect(doc.warnings.map((warning) => warning.code)).toContain(
+      "DIALECT_AUTO_DETECTED"
+    );
+    expect(doc.tables.map((table) => table.name)).toEqual(["address_detail"]);
+  });
+
+  it("falls back to another dialect when the requested dialect fails", async () => {
+    const sql = `
+      CREATE TABLE address_detail (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        address_street VARCHAR(128) NOT NULL
+      );
+    `;
+
+    const doc = await parseSqlSchema(sql, { dialect: "postgres" });
+
+    expect(doc.dialect).toBe("mysql");
+    expect(doc.warnings.map((warning) => warning.code)).toContain(
+      "DIALECT_FALLBACK"
+    );
+    expect(doc.tables.map((table) => table.name)).toEqual(["address_detail"]);
+  });
 });

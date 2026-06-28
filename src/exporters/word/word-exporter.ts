@@ -10,14 +10,16 @@ import {
   TextRun,
   HeadingLevel
 } from "docx";
+import type { OutputLanguage } from "../../core/config/schema";
 import type {
   DatabaseDoc,
-  TableDoc,
-  ReviewTodo
+  TableDoc
 } from "../../core/model/database-doc";
+import { getOutputLabels } from "../shared/output-labels";
 
 export type WordExportOptions = {
   outDir: string;
+  language?: OutputLanguage;
 };
 
 export async function exportWordDocument(
@@ -26,6 +28,7 @@ export async function exportWordDocument(
 ): Promise<void> {
   try {
     await mkdir(options.outDir, { recursive: true });
+    const labels = getOutputLabels(options.language);
 
     const children: (Paragraph | Table)[] = [];
 
@@ -33,7 +36,7 @@ export async function exportWordDocument(
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_1,
-        children: [new TextRun("Database Documentation")]
+        children: [new TextRun(labels.docTitle)]
       })
     );
 
@@ -41,25 +44,25 @@ export async function exportWordDocument(
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Overview")]
+        children: [new TextRun(labels.overviewHeading)]
       })
     );
 
     children.push(
       new Paragraph({
-        children: [new TextRun(`Dialect: ${doc.dialect}`)]
+        children: [new TextRun(`${labels.dialectLabel}: ${doc.dialect}`)]
       })
     );
 
     children.push(
       new Paragraph({
-        children: [new TextRun(`Tables: ${doc.tables.length}`)]
+        children: [new TextRun(`${labels.tablesLabel}: ${doc.tables.length}`)]
       })
     );
 
     children.push(
       new Paragraph({
-        children: [new TextRun(`Relationships: ${doc.relationships.length}`)]
+        children: [new TextRun(`${labels.relationshipsLabel}: ${doc.relationships.length}`)]
       })
     );
 
@@ -67,7 +70,7 @@ export async function exportWordDocument(
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Table List")]
+        children: [new TextRun(labels.tableListHeading)]
       })
     );
 
@@ -78,14 +81,14 @@ export async function exportWordDocument(
             new TableCell({
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: "Table", bold: true })]
+                  children: [new TextRun({ text: labels.tableLabel, bold: true })]
                 })
               ]
             }),
             new TableCell({
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: "Description", bold: true })]
+                  children: [new TextRun({ text: labels.descriptionLabel, bold: true })]
                 })
               ]
             })
@@ -123,26 +126,26 @@ export async function exportWordDocument(
 
     // Table Details
     for (const table of doc.tables) {
-      children.push(...renderTableDetail(table, doc));
+      children.push(...renderTableDetail(table, doc, labels));
     }
 
     // Relationships section
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Relationships")]
+        children: [new TextRun(labels.relationshipsHeading)]
       })
     );
 
     if (doc.relationships.length > 0) {
       const relHeaderCells = [
-        "From Table",
-        "From Column",
-        "To Table",
-        "To Column",
-        "Constraint",
-        "Source",
-        "Needs Review"
+        labels.fromTable,
+        labels.fromColumn,
+        labels.toTable,
+        labels.toColumn,
+        labels.constraint,
+        labels.source,
+        labels.needsReview
       ].map(
         (h) =>
           new TableCell({
@@ -195,7 +198,7 @@ export async function exportWordDocument(
               new TableCell({
                 children: [
                   new Paragraph({
-                    children: [new TextRun(rel.needsReview ? "Yes" : "No")]
+                    children: [new TextRun(rel.needsReview ? labels.yes : labels.no)]
                   })
                 ]
               })
@@ -208,7 +211,7 @@ export async function exportWordDocument(
     } else {
       children.push(
         new Paragraph({
-          children: [new TextRun("(none)")]
+          children: [new TextRun(labels.none)]
         })
       );
     }
@@ -217,12 +220,17 @@ export async function exportWordDocument(
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun("Warnings")]
+        children: [new TextRun(labels.warningsHeading)]
       })
     );
 
     if (doc.warnings.length > 0) {
-      const warnHeaderCells = ["Severity", "Code", "Target", "Message"].map(
+      const warnHeaderCells = [
+        labels.severity,
+        labels.code,
+        labels.target,
+        labels.message
+      ].map(
         (h) =>
           new TableCell({
             children: [
@@ -270,7 +278,7 @@ export async function exportWordDocument(
     } else {
       children.push(
         new Paragraph({
-          children: [new TextRun("(none)")]
+          children: [new TextRun(labels.none)]
         })
       );
     }
@@ -291,153 +299,63 @@ export async function exportWordDocument(
 
 function renderTableDetail(
   table: TableDoc,
-  doc: DatabaseDoc
+  doc: DatabaseDoc,
+  labels: ReturnType<typeof getOutputLabels>
 ): (Paragraph | Table)[] {
   const items: (Paragraph | Table)[] = [];
+  const indexes = collectTableIndexes(table, doc);
 
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_2,
-      children: [new TextRun(`Table: ${table.name}`)]
+      children: [new TextRun(table.name)]
     })
   );
 
-  if (table.description?.value) {
-    items.push(
-      new Paragraph({
-        heading: HeadingLevel.HEADING_3,
-        children: [new TextRun("Purpose")]
-      })
-    );
-    items.push(
-      new Paragraph({
-        children: [new TextRun(table.description.value)]
-      })
-    );
-  }
-
-  if (table.comment) {
-    items.push(
-      new Paragraph({
-        heading: HeadingLevel.HEADING_3,
-        children: [new TextRun("DB Comment")]
-      })
-    );
-    items.push(
-      new Paragraph({
-        children: [new TextRun(table.comment)]
-      })
-    );
-  }
-
-  // Columns
-  if (table.columns.length > 0) {
-    items.push(
-      new Paragraph({
-        heading: HeadingLevel.HEADING_3,
-        children: [new TextRun("Columns")]
-      })
-    );
-    items.push(renderColumnsTable(table));
-  }
-
-  // Primary Keys
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Primary Key")]
+      children: [new TextRun(labels.tableInfoHeading)]
     })
   );
+  items.push(
+    renderMetaTable([
+      [labels.tablePhysicalName, table.name],
+      [labels.tableLogicalName, table.comment ?? ""],
+      [labels.schema, table.schema ?? ""],
+      [labels.primaryKey, table.primaryKeys.join(", ") || labels.none],
+      [
+        labels.foreignKeys,
+        table.foreignKeys.length > 0
+          ? table.foreignKeys
+              .map((fk) => {
+                const name = fk.name ? ` (${fk.name})` : "";
+                return `${fk.columns.join(", ")} -> ${fk.referencedTable}.${fk.referencedColumns.join(", ")}${name}`;
+              })
+              .join("; ")
+          : labels.none
+      ],
+      [
+        labels.indexes,
+        indexes.length > 0
+          ? indexes
+              .map(
+                (idx) =>
+                  `${idx.name} (${idx.columns.join(", ")})${idx.unique ? " UNIQUE" : ""}`
+              )
+              .join("; ")
+          : labels.none
+      ]
+    ])
+  );
 
-  if (table.primaryKeys.length > 0) {
-    for (const pk of table.primaryKeys) {
-      items.push(
-        new Paragraph({
-          children: [new TextRun(`• ${pk}`)]
-        })
-      );
-    }
-  } else {
-    items.push(
-      new Paragraph({
-        children: [new TextRun("• (none)")]
-      })
-    );
-  }
-
-  // Foreign Keys
   items.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Foreign Keys")]
+      children: [new TextRun(labels.columnsHeading)]
     })
   );
-
-  if (table.foreignKeys.length > 0) {
-    for (const fk of table.foreignKeys) {
-      const name = fk.name ? ` (${fk.name})` : "";
-      items.push(
-        new Paragraph({
-          children: [
-            new TextRun(
-              `• ${fk.columns.join(", ")} → ${fk.referencedTable}.${fk.referencedColumns.join(", ")}${name}`
-            )
-          ]
-        })
-      );
-    }
-  } else {
-    items.push(
-      new Paragraph({
-        children: [new TextRun("• (none)")]
-      })
-    );
-  }
-
-  // Indexes
-  items.push(
-    new Paragraph({
-      heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Indexes")]
-    })
-  );
-
-  const tableIndexes = doc.indexes.filter((idx) => idx.table === table.name);
-  const allIndexes = [
-    ...table.indexes,
-    ...tableIndexes.filter(
-      (idx) => !table.indexes.some((ti) => ti.name === idx.name)
-    )
-  ];
-
-  if (allIndexes.length > 0) {
-    for (const idx of allIndexes) {
-      const unique = idx.unique ? " UNIQUE" : "";
-      items.push(
-        new Paragraph({
-          children: [
-            new TextRun(`• ${idx.name} on (${idx.columns.join(", ")})${unique}`)
-          ]
-        })
-      );
-    }
-  } else {
-    items.push(
-      new Paragraph({
-        children: [new TextRun("• (none)")]
-      })
-    );
-  }
-
-  // Review TODOs
-  items.push(
-    new Paragraph({
-      heading: HeadingLevel.HEADING_3,
-      children: [new TextRun("Review TODOs")]
-    })
-  );
-
-  items.push(...renderReviewTodos(table.reviewTodos));
+  items.push(renderColumnsTable(table, labels));
 
   // Page break between tables
   items.push(
@@ -449,15 +367,17 @@ function renderTableDetail(
   return items;
 }
 
-function renderColumnsTable(table: TableDoc): Table {
+function renderColumnsTable(
+  table: TableDoc,
+  labels: ReturnType<typeof getOutputLabels>
+): Table {
   const headerCells = [
-    "Name",
-    "Type",
-    "Nullable",
-    "Default",
-    "PK",
-    "FK",
-    "Comment"
+    labels.physicalName,
+    labels.logicalName,
+    labels.type,
+    labels.required,
+    labels.defaultValue,
+    labels.notes
   ].map(
     (h) =>
       new TableCell({
@@ -477,12 +397,17 @@ function renderColumnsTable(table: TableDoc): Table {
             children: [new Paragraph({ children: [new TextRun(col.name)] })]
           }),
           new TableCell({
+            children: [
+              new Paragraph({ children: [new TextRun(col.comment ?? "")] })
+            ]
+          }),
+          new TableCell({
             children: [new Paragraph({ children: [new TextRun(col.type)] })]
           }),
           new TableCell({
             children: [
               new Paragraph({
-                children: [new TextRun(col.nullable ? "Yes" : "No")]
+                children: [new TextRun(col.nullable ? labels.no : labels.yes)]
               })
             ]
           }),
@@ -496,22 +421,10 @@ function renderColumnsTable(table: TableDoc): Table {
           new TableCell({
             children: [
               new Paragraph({
-                children: [new TextRun(col.isPrimaryKey ? "Yes" : "No")]
+                children: [new TextRun(col.description?.value ?? "")]
               })
             ]
           }),
-          new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun(col.isForeignKey ? "Yes" : "No")]
-              })
-            ]
-          }),
-          new TableCell({
-            children: [
-              new Paragraph({ children: [new TextRun(col.comment ?? "")] })
-            ]
-          })
         ]
       })
     );
@@ -520,21 +433,41 @@ function renderColumnsTable(table: TableDoc): Table {
   return new Table({ rows: colRows });
 }
 
-function renderReviewTodos(todos: ReviewTodo[]): Paragraph[] {
-  if (todos.length === 0) {
-    return [
-      new Paragraph({
-        children: [new TextRun("• (none)")]
-      })
-    ];
-  }
-
-  return todos.map((todo) => {
-    const sug = todo.suggestion ? ` — ${todo.suggestion}` : "";
-    return new Paragraph({
-      children: [
-        new TextRun(`• [${todo.type}] ${todo.target}: ${todo.issue}${sug}`)
-      ]
-    });
+function renderLabelValueParagraph(label: string, value: string): Paragraph {
+  return new Paragraph({
+    children: [new TextRun(`${label}: ${value}`)]
   });
+}
+
+function renderMetaTable(rows: Array<[string, string]>): Table {
+  return new Table({
+    rows: rows.map(
+      ([label, value]) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: label, bold: true })]
+                })
+              ]
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun(value)] })]
+            })
+          ]
+        })
+    )
+  });
+}
+
+function collectTableIndexes(table: TableDoc, doc: DatabaseDoc) {
+  return [
+    ...table.indexes,
+    ...doc.indexes.filter(
+      (idx) =>
+        idx.table === table.name &&
+        !table.indexes.some((tableIdx) => tableIdx.name === idx.name)
+    )
+  ];
 }

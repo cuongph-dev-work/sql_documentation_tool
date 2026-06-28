@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { OutputLanguage } from "../../core/config/schema";
 import type { DatabaseDoc, TableDoc } from "../../core/model/database-doc";
 import { sanitizeFilename } from "../../core/sanitize";
+import { getOutputLabels } from "../shared/output-labels";
 
 export type HtmlExportOptions = {
   outDir: string;
+  language?: OutputLanguage;
 };
 
 export async function exportHtmlDocs(
@@ -12,17 +15,23 @@ export async function exportHtmlDocs(
   options: HtmlExportOptions
 ): Promise<void> {
   try {
-    await mkdir(options.outDir, { recursive: true });
     const htmlDir = join(options.outDir, "html");
     const tablesDir = join(htmlDir, "tables");
     await mkdir(tablesDir, { recursive: true });
+    const labels = getOutputLabels(options.language);
 
-    await writeFile(join(htmlDir, "index.html"), renderIndexPage(doc), "utf8");
+    // index.html
+    await writeFile(
+      join(htmlDir, "index.html"),
+      renderIndexPage(doc, labels),
+      "utf8"
+    );
 
+    // per-table pages
     for (const table of doc.tables) {
       await writeFile(
         join(tablesDir, `${sanitizeFilename(table.name)}.html`),
-        renderTablePage(table, doc),
+        renderTablePage(table, doc, labels),
         "utf8"
       );
     }
@@ -34,212 +43,224 @@ export async function exportHtmlDocs(
   }
 }
 
-function pageShell(title: string, body: string): string {
+// ── Shared CSS ────────────────────────────────────────────────────────────────
+
+const CSS = `
+    :root {
+      --bg: #f3f4f6;
+      --paper: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --border: #bfc7d4;
+      --accent: #4472c4;
+      --accent-light: #dbe5f1;
+      --accent-mid: #eef3f8;
+      --pk-bg: #fff3cd;
+      --fk-bg: #e8f4fd;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Yu Gothic UI", "Meiryo", Arial, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.5;
+      padding: 24px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .sheet {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      padding: 24px;
+    }
+    h1 { font-size: 22px; margin-bottom: 16px; color: var(--accent); border-bottom: 2px solid var(--accent-light); padding-bottom: 8px; }
+    h2 { font-size: 15px; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 16px; }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+      text-align: left;
+      vertical-align: top;
+      word-break: break-word;
+      font-size: 13px;
+    }
+    thead th { background: var(--accent); color: #fff; font-weight: 700; }
+    .meta th { background: var(--accent-light); font-weight: 700; color: #1f3864; width: 180px; }
+    .meta td { background: #fafbfe; }
+    .pk td:first-child { font-weight: 700; }
+    .pk { background: var(--pk-bg); }
+    .fk { background: var(--fk-bg); }
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle;
+    }
+    .badge-pk { background: #f59e0b; color: #fff; }
+    .badge-fk { background: var(--accent); color: #fff; }
+    .note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    .back { margin-bottom: 16px; font-size: 13px; }
+    .summary { display: flex; gap: 24px; margin-bottom: 20px; }
+    .summary-item { background: var(--accent-light); border-radius: 6px; padding: 10px 18px; }
+    .summary-item .num { font-size: 24px; font-weight: 700; color: var(--accent); }
+    .summary-item .lbl { font-size: 12px; color: var(--muted); }
+    .table-list { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .table-list th { background: var(--accent); color: #fff; }
+    .table-list tr:nth-child(even) td { background: var(--accent-mid); }
+    .table-list td:first-child a { font-weight: 600; }
+`;
+
+function pageShell(title: string, body: string, fromSubdir = false): string {
+  const base = fromSubdir ? "../" : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${esc(title)} - Database Documentation</title>
-  <style>
-    :root {
-      --bg: #fafbfc;
-      --card: #fff;
-      --text: #1a1a2e;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --accent: #2563eb;
-      --code-bg: #f1f5f9;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg); color: var(--text); line-height: 1.6;
-      max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem;
-    }
-    h1 { font-size: 1.75rem; margin-bottom: 1rem; }
-    h2 { font-size: 1.25rem; margin: 1.5rem 0 0.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.25rem; }
-    table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-    th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-    th { background: #f8fafc; font-weight: 600; color: var(--muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    ul { list-style: none; padding-left: 0; }
-    li { padding: 0.15rem 0; }
-    .back-link { display: inline-block; margin-bottom: 1rem; font-size: 0.875rem; }
-    .badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
-    .badge-pk { background: #dbeafe; color: #1e40af; }
-    .badge-fk { background: #fef3c7; color: #92400e; }
-    .badge-warn { background: #fee2e2; color: #991b1b; }
-    .badge-info { background: #e0f2fe; color: #075985; }
-    .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
-  </style>
+  <title>${esc(title)}</title>
+  <style>${CSS}  </style>
 </head>
 <body>
+  <div class="sheet">
 ${body}
+  </div>
 </body>
 </html>`;
 }
 
-function renderIndexPage(doc: DatabaseDoc): string {
+// ── Index page ────────────────────────────────────────────────────────────────
+
+function renderIndexPage(
+  doc: DatabaseDoc,
+  labels: ReturnType<typeof getOutputLabels>
+): string {
   let tableRows = "";
   for (const table of doc.tables) {
-    const desc = esc(table.description?.value ?? table.comment ?? "");
-    const filename = sanitizeFilename(table.name);
-    tableRows += `      <tr><td><a href="tables/${encodeURIComponent(filename)}.html">${esc(table.name)}</a></td><td>${desc}</td></tr>\n`;
+    const pkCols = table.primaryKeys.join(", ") || labels.none;
+    const fkCount = table.foreignKeys.length;
+    const fileName = sanitizeFilename(table.name);
+    tableRows += `      <tr>
+        <td><a href="tables/${fileName}.html">${esc(table.name)}</a></td>
+        <td>${esc(table.comment ?? "")}</td>
+        <td style="text-align:center">${table.columns.length}</td>
+        <td>${esc(pkCols)}</td>
+        <td style="text-align:center">${fkCount}</td>
+      </tr>\n`;
   }
-
-  // Warnings
-  let warningRows = "";
-  if (doc.warnings.length > 0) {
-    for (const warning of doc.warnings) {
-      warningRows += `      <tr><td><span class="badge badge-warn">${esc(warning.severity)}</span></td><td>${esc(warning.code)}</td><td>${esc(warning.target ?? "")}</td><td>${esc(warning.message)}</td></tr>\n`;
-    }
-  }
-
-  const warningsSection =
-    doc.warnings.length > 0
-      ? `
-  <h2>Warnings</h2>
-  <table>
-    <thead><tr><th>Severity</th><th>Code</th><th>Target</th><th>Message</th></tr></thead>
-    <tbody>
-${warningRows}    </tbody>
-  </table>`
-      : `
-  <h2>Warnings</h2>
-  <p>(none)</p>`;
 
   const body = `
-  <h1>Database Documentation</h1>
-  <h2>Tables</h2>
-  <table>
-    <thead><tr><th>Table</th><th>Description</th></tr></thead>
+  <h1>${esc(labels.docTitle)}</h1>
+  <div class="summary">
+    <div class="summary-item"><div class="num">${doc.tables.length}</div><div class="lbl">${esc(labels.tablesLabel)}</div></div>
+    <div class="summary-item"><div class="num">${doc.relationships.length}</div><div class="lbl">${esc(labels.relationshipsLabel)}</div></div>
+    <div class="summary-item"><div class="num">${doc.dialect}</div><div class="lbl">${esc(labels.dialectLabel)}</div></div>
+  </div>
+  <h2>${esc(labels.tableListHeading)}</h2>
+  <table class="table-list">
+    <thead><tr>
+      <th>${esc(labels.tableLabel)}</th>
+      <th>${esc(labels.tableLogicalName)}</th>
+      <th style="width:70px;text-align:center">Cols</th>
+      <th>${esc(labels.primaryKey)}</th>
+      <th style="width:50px;text-align:center">FK</th>
+    </tr></thead>
     <tbody>
 ${tableRows}    </tbody>
   </table>
-${warningsSection}
-  <p class="footer">Generated by dbdocgen</p>
+  <p class="note">${esc(labels.generatedNote)}</p>
 `;
-  return pageShell("Tables", body);
+  return pageShell(labels.docTitle, body);
 }
 
-function renderTablePage(table: TableDoc, doc: DatabaseDoc): string {
-  const purpose = esc(table.description?.value ?? table.comment ?? "");
+// ── Per-table page ────────────────────────────────────────────────────────────
 
-  // Columns
+function renderTablePage(
+  table: TableDoc,
+  doc: DatabaseDoc,
+  labels: ReturnType<typeof getOutputLabels>
+): string {
+  const indexes = collectTableIndexes(table, doc);
+
+  const foreignKeys = table.foreignKeys.length
+    ? table.foreignKeys
+        .map((fk) => {
+          const name = fk.name ? ` (${fk.name})` : "";
+          return `${fk.columns.join(", ")} → ${fk.referencedTable}.${fk.referencedColumns.join(", ")}${name}`;
+        })
+        .join("<br>")
+    : labels.none;
+
+  const indexText = indexes.length
+    ? indexes
+        .map(
+          (idx) =>
+            `${idx.name} (${idx.columns.join(", ")})${idx.unique ? " UNIQUE" : ""}`
+        )
+        .join("<br>")
+    : labels.none;
+
   let colRows = "";
   for (const col of table.columns) {
-    let badges = "";
-    if (col.isPrimaryKey) badges += '<span class="badge badge-pk">PK</span> ';
-    if (col.isForeignKey) badges += '<span class="badge badge-fk">FK</span> ';
-    colRows += `      <tr><td>${esc(col.name)}</td><td>${esc(col.type)}</td><td>${col.nullable ? "Yes" : "No"}</td><td>${esc(col.defaultValue ?? "-")}</td><td>${badges}</td><td>${esc(col.comment ?? "")}</td></tr>\n`;
-  }
-
-  // Primary Keys
-  let pkList = "";
-  if (table.primaryKeys.length > 0) {
-    for (const pk of table.primaryKeys) {
-      pkList += `      <li>${esc(pk)}</li>\n`;
-    }
-  } else {
-    pkList = "      <li>(none)</li>\n";
-  }
-
-  // Foreign Keys
-  let fkList = "";
-  if (table.foreignKeys.length > 0) {
-    for (const fk of table.foreignKeys) {
-      const name = fk.name ? ` (${esc(fk.name)})` : "";
-      fkList += `      <li>${fk.columns.join(", ")} → ${esc(fk.referencedTable)}.${fk.referencedColumns.join(", ")}${name}</li>\n`;
-    }
-  } else {
-    fkList = "      <li>(none)</li>\n";
-  }
-
-  // Indexes
-  const tableIndexes = doc.indexes.filter((idx) => idx.table === table.name);
-  const allIndexes = [
-    ...table.indexes,
-    ...tableIndexes.filter(
-      (idx) => !table.indexes.some((ti) => ti.name === idx.name)
-    )
-  ];
-  let idxList = "";
-  if (allIndexes.length > 0) {
-    for (const idx of allIndexes) {
-      const unique = idx.unique ? " UNIQUE" : "";
-      idxList += `      <li>${esc(idx.name)} on (${idx.columns.join(", ")})${unique}</li>\n`;
-    }
-  } else {
-    idxList = "      <li>(none)</li>\n";
-  }
-
-  // Relationships
-  const tableRels = doc.relationships.filter(
-    (rel) => rel.fromTable === table.name || rel.toTable === table.name
-  );
-  let relList = "";
-  if (tableRels.length > 0) {
-    for (const rel of tableRels) {
-      const direction =
-        rel.fromTable === table.name
-          ? `${esc(rel.fromColumn)} → ${esc(rel.toTable)}.${esc(rel.toColumn)}`
-          : `${esc(rel.fromTable)}.${esc(rel.fromColumn)} → ${esc(rel.toColumn)}`;
-      const review = rel.needsReview
-        ? ' <span class="badge badge-warn">needs review</span>'
-        : "";
-      relList += `      <li>${direction}${review}</li>\n`;
-    }
-  } else {
-    relList = "      <li>(none)</li>\n";
-  }
-
-  // Review TODOs
-  let todoList = "";
-  if (table.reviewTodos.length > 0) {
-    for (const todo of table.reviewTodos) {
-      const sug = todo.suggestion ? ` — ${esc(todo.suggestion)}` : "";
-      todoList += `      <li>[${esc(todo.type)}] ${esc(todo.target)}: ${esc(todo.issue)}${sug}</li>\n`;
-    }
-  } else {
-    todoList = "      <li>(none)</li>\n";
+    const pkBadge = col.isPrimaryKey
+      ? `<span class="badge badge-pk">PK</span>`
+      : "";
+    const fkBadge = col.isForeignKey
+      ? `<span class="badge badge-fk">FK</span>`
+      : "";
+    const rowClass = col.isPrimaryKey ? "pk" : col.isForeignKey ? "fk" : "";
+    const required = col.nullable ? labels.no : labels.yes;
+    colRows += `      <tr${rowClass ? ` class="${rowClass}"` : ""}>`
+      + `<td>${esc(col.name)}${pkBadge}${fkBadge}</td>`
+      + `<td>${esc(col.comment ?? "")}</td>`
+      + `<td>${esc(col.type)}</td>`
+      + `<td>${required}</td>`
+      + `<td>${esc(col.defaultValue ?? "-")}</td>`
+      + `<td>${esc(col.description?.value ?? "")}</td>`
+      + `</tr>\n`;
   }
 
   const body = `
-  <a class="back-link" href="../index.html">← Back to Tables</a>
+  <p class="back"><a href="../index.html">← ${esc(labels.tableListHeading)}</a></p>
   <h1>${esc(table.name)}</h1>
-  ${purpose ? `<p><strong>Purpose:</strong> ${purpose}</p>` : ""}
-  ${table.comment ? `<p><strong>DB Comment:</strong> ${esc(table.comment)}</p>` : ""}
+  <h2>${esc(labels.tableInfoHeading)}</h2>
+  <table class="meta">
+    <tbody>
+      <tr><th>${esc(labels.tablePhysicalName)}</th><td>${esc(table.name)}</td></tr>
+      <tr><th>${esc(labels.tableLogicalName)}</th><td>${esc(table.comment ?? "")}</td></tr>
+      <tr><th>${esc(labels.schema)}</th><td>${esc(table.schema ?? "")}</td></tr>
+      <tr><th>${esc(labels.primaryKey)}</th><td>${esc(table.primaryKeys.join(", ") || labels.none)}</td></tr>
+      <tr><th>${esc(labels.foreignKeys)}</th><td>${foreignKeys}</td></tr>
+      <tr><th>${esc(labels.indexes)}</th><td>${indexText}</td></tr>
+    </tbody>
+  </table>
 
-  <h2>Columns</h2>
-  <table>
-    <thead><tr><th>Name</th><th>Type</th><th>Nullable</th><th>Default</th><th>Keys</th><th>Comment</th></tr></thead>
+  <h2>${esc(labels.columnsHeading)}</h2>
+  <table class="columns">
+    <thead><tr>
+      <th>${esc(labels.physicalName)}</th>
+      <th>${esc(labels.logicalName)}</th>
+      <th>${esc(labels.type)}</th>
+      <th>${esc(labels.required)}</th>
+      <th>${esc(labels.defaultValue)}</th>
+      <th>${esc(labels.notes)}</th>
+    </tr></thead>
     <tbody>
 ${colRows}    </tbody>
   </table>
-
-  <h2>Primary Key</h2>
-  <ul>
-${pkList}  </ul>
-
-  <h2>Foreign Keys</h2>
-  <ul>
-${fkList}  </ul>
-
-  <h2>Indexes</h2>
-  <ul>
-${idxList}  </ul>
-
-  <h2>Relationships</h2>
-  <ul>
-${relList}  </ul>
-
-  <h2>Review TODOs</h2>
-  <ul>
-${todoList}  </ul>
+  <p class="note">${esc(labels.generatedNote)}</p>
 `;
   return pageShell(table.name, body);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function collectTableIndexes(table: TableDoc, doc: DatabaseDoc) {
+  return [
+    ...table.indexes,
+    ...doc.indexes.filter(
+      (idx) =>
+        idx.table === table.name &&
+        !table.indexes.some((tableIdx) => tableIdx.name === idx.name)
+    ),
+  ];
 }
 
 function esc(text: string): string {

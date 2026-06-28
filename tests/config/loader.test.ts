@@ -11,14 +11,12 @@ describe("loadConfig", () => {
       cliOptions: {
         schema: "./database/schema.sql",
         outDir: "./docs/db",
-        ai: false,
         formats: ["excel", "diagram"]
       }
     });
 
     expect(config.schema).toBe("./database/schema.sql");
     expect(config.outDir).toBe("./docs/db");
-    expect(config.ai.enabled).toBe(false);
     expect(config.output.formats).toEqual(["excel", "diagram"]);
   });
 
@@ -29,22 +27,44 @@ describe("loadConfig", () => {
       JSON.stringify({
         schema: "./schema.sql",
         outDir: "./generated",
-        ai: { enabled: true, model: "configured-model" }
+        output: { formats: ["markdown"] }
       })
     );
 
     const config = await loadConfig({
       cwd: dir,
       cliOptions: {
-        outDir: "./docs/db",
-        ai: false
+        outDir: "./docs/db"
       }
     });
 
     expect(config.schema).toBe("./schema.sql");
     expect(config.outDir).toBe("./docs/db");
-    expect(config.ai.enabled).toBe(false);
-    expect(config.ai.model).toBe("configured-model");
+    expect(config.output.formats).toEqual(["markdown"]);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("accepts dialect from config and CLI overrides", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "dbdocgen-"));
+    await writeFile(
+      join(dir, ".dbdocgenrc"),
+      JSON.stringify({
+        schema: "./schema.sql",
+        dialect: "postgres"
+      })
+    );
+
+    const config = await loadConfig({
+      cwd: dir,
+      cliOptions: {
+        // @ts-expect-error added in implementation after red test
+        dialect: "mysql"
+      }
+    });
+
+    // @ts-expect-error added in implementation after red test
+    expect(config.dialect).toBe("mysql");
 
     await rm(dir, { recursive: true, force: true });
   });

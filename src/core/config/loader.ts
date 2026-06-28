@@ -11,13 +11,9 @@ type DeepPartial<T> = T extends object
 
 export type CliConfigOptions = {
   schema?: string;
-  source?: string;
+  dialect?: "postgres" | "mysql" | "mariadb" | "sqlite" | "mssql" | "unknown";
   outDir?: string;
   formats?: OutputFormat[];
-  ai?: boolean;
-  aiProvider?: "9router" | "openai" | "openai-compatible";
-  aiBaseUrl?: string;
-  aiModel?: string;
   configPath?: string;
 };
 
@@ -49,22 +45,8 @@ function mergeConfig(
   return {
     ...fileConfig,
     schema: cli.schema ?? fileConfig.schema,
+    dialect: cli.dialect ?? fileConfig.dialect,
     outDir: cli.outDir ?? fileConfig.outDir,
-    context: {
-      ...fileConfig.context,
-      source: {
-        ...fileConfig.context?.source,
-        enabled: cli.source ? true : fileConfig.context?.source?.enabled,
-        rootDir: cli.source ?? fileConfig.context?.source?.rootDir
-      }
-    },
-    ai: {
-      ...fileConfig.ai,
-      enabled: cli.ai ?? fileConfig.ai?.enabled,
-      provider: cli.aiProvider ?? fileConfig.ai?.provider,
-      baseURL: cli.aiBaseUrl ?? fileConfig.ai?.baseURL,
-      model: cli.aiModel ?? fileConfig.ai?.model
-    },
     output: {
       ...fileConfig.output,
       formats: cli.formats ?? fileConfig.output?.formats

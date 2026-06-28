@@ -9,6 +9,7 @@ const doc: DatabaseDoc = {
   tables: [
     {
       name: "users",
+      comment: "Users table",
       columns: [
         {
           name: "id",

@@ -2,20 +2,18 @@
 
 ## 1. Product Overview
 
-`dbdocgen` is an npm package and CLI tool that generates database documentation from a database schema.
+`dbdocgen` is an npm package and CLI tool that generates database documentation from a SQL schema file.
 
-The database schema is the single source of truth. Backend source code is used only as optional context for AI enrichment.
+The database schema is the single source of truth. The tool parses schema files and exports documentation in multiple formats.
 
 ## 2. Core Principle
 
 ```txt
-Database schema / live DB = Single Source of Truth
-Backend source code       = Optional context enrichment
-AI                        = Description/context generator
-Exporters                 = Document generators
+Database schema = Single Source of Truth
+Exporters       = Document generators
 ```
 
-The tool must never allow AI or source code analysis to override database facts.
+The tool must never allow any post-processing step to override database schema facts.
 
 Database facts include:
 
@@ -34,7 +32,7 @@ Database facts include:
 - column comment
 ```
 
-## 3. Recommended Tech Stack
+## 3. Tech Stack
 
 ### Language
 
@@ -42,12 +40,11 @@ Database facts include:
 TypeScript
 ```
 
-Reason:
+Reasons:
 
 ```txt
 - Best fit for npm package distribution
 - Good CLI ecosystem
-- Easy integration with Node.js backend projects
 - Strong type system for normalized database metadata
 - Easier plugin architecture
 ```
@@ -70,7 +67,7 @@ pnpm
 tsup
 ```
 
-Reason:
+Reasons:
 
 ```txt
 - Simple TypeScript build
@@ -79,18 +76,6 @@ Reason:
 ```
 
 ### CLI Framework
-
-```txt
-commander
-```
-
-Alternative:
-
-```txt
-yargs
-```
-
-Recommended MVP choice:
 
 ```txt
 commander
@@ -121,7 +106,6 @@ Used for:
 
 ```txt
 - config validation
-- AI response validation
 - internal metadata model validation
 ```
 
@@ -141,13 +125,11 @@ live database connection
 
 ### SQL Parser
 
-Recommended:
-
 ```txt
 node-sql-parser
 ```
 
-Optional dialect-specific parsers:
+Optional dialect-specific parsers (future):
 
 ```txt
 pgsql-ast-parser
@@ -156,8 +138,6 @@ pg-query-parser
 
 ### Supported Dialects for MVP
 
-Recommended MVP target:
-
 ```txt
 PostgreSQL
 MySQL / MariaDB
@@ -165,173 +145,7 @@ MySQL / MariaDB
 
 SQLite and SQL Server can be added later.
 
-## 5. Backend Source Context Scanner
-
-Backend source code is optional and used only to enrich context.
-
-The source scanner should not be a deterministic framework parser in MVP. Instead, it should retrieve relevant source files and let AI summarize useful business context.
-
-### Source Scanner Responsibilities
-
-```txt
-- scan source tree
-- filter relevant files
-- chunk source files
-- find table-related context
-- send compact context to AI
-- receive structured JSON enrichment
-```
-
-### Recommended File Matching
-
-General:
-
-```txt
-**/*entity*.*
-**/*model*.*
-**/*schema*.*
-**/*repository*.*
-**/*service*.*
-**/*controller*.*
-**/*dto*.*
-**/*enum*.*
-**/*constant*.*
-**/migration*/**
-**/migrations/**
-```
-
-Node.js / TypeScript:
-
-```txt
-**/*.ts
-**/*.tsx
-**/*.js
-**/*.jsx
-```
-
-Ruby on Rails:
-
-```txt
-app/models/**
-app/controllers/**
-app/services/**
-db/migrate/**
-```
-
-Laravel:
-
-```txt
-app/Models/**
-app/Http/Controllers/**
-app/Services/**
-database/migrations/**
-```
-
-Python:
-
-```txt
-**/*.py
-```
-
-Java:
-
-```txt
-**/*.java
-```
-
-### Exclude Patterns
-
-```txt
-**/node_modules/**
-**/dist/**
-**/build/**
-**/.next/**
-**/coverage/**
-**/.git/**
-**/vendor/**
-**/tmp/**
-**/logs/**
-```
-
-## 6. AI Provider
-
-### MVP Provider
-
-```txt
-9router
-```
-
-9router should be treated as an OpenAI-compatible provider.
-
-### Provider Interface
-
-The provider should be generic and OpenAI-compatible first.
-
-```ts
-type AiProviderConfig = {
-  provider: "9router" | "openai" | "openai-compatible";
-  baseURL?: string;
-  apiKeyEnv: string;
-  model: string;
-  temperature?: number;
-  maxTokens?: number;
-};
-```
-
-### OpenAI-Compatible Client
-
-```ts
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: process.env[config.ai.apiKeyEnv],
-  baseURL: config.ai.baseURL
-});
-```
-
-### Example 9router Config
-
-```ts
-ai: {
-  enabled: true,
-  provider: "9router",
-  baseURL: "http://localhost:20128/v1",
-  apiKeyEnv: "NINE_ROUTER_API_KEY",
-  model: "openai/gpt-4.1-mini",
-  temperature: 0.2,
-  maxTokens: 6000,
-}
-```
-
-## 7. AI Rules / Prompt Config
-
-AI rules must be stored outside source code so they can be edited without changing package code.
-
-Recommended structure:
-
-```txt
-.ai/
-  rules/
-    system.md
-    source-scan.md
-    table-enrich.md
-    column-enrich.md
-    relationship-review.md
-```
-
-### Rule Loading
-
-```txt
-rulesDir: "./.ai/rules"
-```
-
-### Default Rules
-
-The package should include default built-in rules.
-
-If the user provides custom rules, custom rules override built-in rules.
-
-## 8. Exporters
+## 5. Exporters
 
 ### Excel
 
@@ -347,44 +161,29 @@ Output:
 database_dictionary.xlsx
 ```
 
-### Diagram
+Format: A5:SQL-style — one sheet per table with metadata header rows and a six-column definition table.
 
-Recommended MVP:
-
-```txt
-Mermaid ERD
-```
-
-Optional renderers:
-
-```txt
-@mermaid-js/mermaid-cli
-Graphviz
-PlantUML
-```
-
-Output:
+### Mermaid ER Diagram
 
 ```txt
 er_diagram.mmd
-er_diagram.svg
-er_diagram.png
+```
+
+No external renderer dependency in MVP. Future optional renderers:
+
+```txt
+@mermaid-js/mermaid-cli
 ```
 
 ### Markdown
-
-Approach:
-
-```txt
-template-based generator
-```
 
 Output:
 
 ```txt
 tables/*.md
-DATABASE.md
 ```
+
+Format: per-table files, A5:SQL-style metadata and six-column definition table.
 
 ### Word
 
@@ -400,29 +199,31 @@ Output:
 database_document.docx
 ```
 
+Format: A5:SQL-style metadata and column definition tables.
+
 ### HTML
 
-MVP options:
+Output:
 
 ```txt
-static HTML generator
+html/tables/*.html
 ```
 
-Future options:
+Format: per-table static HTML files with A5-style metadata, six-column definition table, and self-contained CSS.
+
+## 6. Output Label i18n
+
+All column headers and metadata labels are localized via a central `output-labels` module.
+
+Supported languages:
 
 ```txt
-VitePress
-Docusaurus
-MkDocs-compatible Markdown output
+en  English (default)
+vi  Vietnamese
+jp  Japanese
 ```
 
-Recommended MVP:
-
-```txt
-Generate static HTML directly from normalized metadata and Markdown files.
-```
-
-## 9. Testing
+## 7. Testing
 
 ### Unit Test
 
@@ -436,8 +237,6 @@ vitest
 fixtures/
   postgres/basic-schema.sql
   mysql/basic-schema.sql
-  source/nestjs-sample/
-  source/rails-sample/
 ```
 
 ### Test Targets
@@ -448,18 +247,20 @@ fixtures/
 - Excel exporter
 - Mermaid exporter
 - Markdown exporter
-- AI response parser
+- Word exporter
+- HTML exporter
 - config loader
+- output labels (i18n)
 ```
 
-## 10. Lint / Format
+## 8. Lint / Format
 
 ```txt
 eslint
 prettier
 ```
 
-## 11. Release / Versioning
+## 9. Release / Versioning
 
 ```txt
 changesets
@@ -473,9 +274,7 @@ Used for:
 - npm publish workflow
 ```
 
-## 12. Suggested Package Structure
-
-MVP should start as one package.
+## 10. Package Structure
 
 ```txt
 dbdocgen/
@@ -487,23 +286,16 @@ dbdocgen/
 │   │   └── config/
 │   ├── parsers/
 │   │   └── sql/
-│   ├── source-scanner/
-│   ├── ai/
-│   │   ├── providers/
-│   │   ├── rules/
-│   │   ├── prompts/
-│   │   ├── schemas/
-│   │   ├── cache/
-│   │   └── enrichers/
 │   ├── exporters/
 │   │   ├── excel/
 │   │   ├── diagram/
 │   │   ├── markdown/
 │   │   ├── word/
-│   │   └── html/
+│   │   ├── html/
+│   │   └── shared/        # output-labels, sanitize, etc.
 │   └── index.ts
 ├── fixtures/
-├── examples/
+├── tests/
 ├── docs/
 ├── package.json
 ├── pnpm-lock.yaml
@@ -519,68 +311,63 @@ Future package split:
 @dbdocgen/parser-sql
 @dbdocgen/exporter-excel
 @dbdocgen/exporter-diagram
+@dbdocgen/exporter-markdown
 @dbdocgen/exporter-html
-@dbdocgen/ai-openai-compatible
+@dbdocgen/exporter-word
 ```
 
-## 13. CLI Design
+## 11. CLI Design
 
-### Generate Documentation
+### Generate documentation (timestamped output)
+
+```bash
+dbdocgen generate --schema ./database/schema.sql
+```
+
+### Generate with explicit output directory
+
+```bash
+dbdocgen generate --schema ./database/schema.sql --out ./docs/db
+```
+
+### Generate selective formats
 
 ```bash
 dbdocgen generate \
   --schema ./database/schema.sql \
-  --source ./src \
-  --out ./docs/db \
-  --format excel,markdown,html,diagram,word \
-  --ai
+  --format excel,markdown,diagram
 ```
 
-### Generate Without AI
+### Other commands
 
 ```bash
-dbdocgen generate \
-  --schema ./database/schema.sql \
-  --out ./docs/db \
-  --no-ai
+dbdocgen init                   # Create default config
+dbdocgen validate               # Validate schema file
+dbdocgen clean                  # Clean output directory
+dbdocgen config show            # Show resolved config
+dbdocgen config validate        # Validate config file
+dbdocgen info                   # Show version and supported features
 ```
 
-### Override AI Config
-
-```bash
-dbdocgen generate \
-  --schema ./database/schema.sql \
-  --source ./src \
-  --ai \
-  --ai-provider 9router \
-  --ai-base-url http://localhost:20128/v1 \
-  --ai-model openai/gpt-4.1-mini
-```
-
-## 14. Programmatic API
+## 12. Programmatic API
 
 ```ts
 import { generateDbDocs } from "dbdocgen";
 
-await generateDbDocs({
+const doc = await generateDbDocs({
   schema: "./database/schema.sql",
-  source: {
-    enabled: true,
-    rootDir: "./src"
-  },
   outDir: "./docs/db",
-  formats: ["excel", "markdown", "html", "diagram", "word"],
-  ai: {
-    enabled: true,
-    provider: "9router",
-    baseURL: "http://localhost:20128/v1",
-    apiKeyEnv: "NINE_ROUTER_API_KEY",
-    model: "openai/gpt-4.1-mini"
+  output: {
+    formats: ["excel", "markdown", "html", "diagram", "word"],
+    language: "en"
   }
 });
+
+console.log(doc.tables);    // Array of TableDoc
+console.log(doc.warnings);  // Array of WarningDoc
 ```
 
-## 15. Recommended MVP Scope
+## 13. MVP Scope
 
 ### Included
 
@@ -588,37 +375,34 @@ await generateDbDocs({
 - schema.sql input
 - PostgreSQL/MySQL basic DDL parsing
 - normalized database metadata model
-- Excel Data Dictionary export
+- Excel Data Dictionary export (A5 style)
 - Mermaid ERD export
-- Markdown export
-- static HTML export
-- AI enrichment from source code
-- configurable AI rules
-- 9router provider via OpenAI-compatible API
-- AI cache
-- Review TODO output
+- Markdown export (per-table, A5 style)
+- static HTML export (per-table, A5 style)
+- Word export (A5 style)
+- i18n output labels (en, vi, jp)
+- timestamped output directory
+- config file support (cosmiconfig)
 ```
 
 ### Excluded from MVP
 
 ```txt
+- AI enrichment
+- backend source code scanning
 - OpenAPI parser
-- deterministic framework-specific source parser
 - live DB introspection
 - web UI
 - advanced lineage analysis
-- automatic business glossary approval flow
 ```
 
-## 16. Future Roadmap
+## 14. Future Roadmap
 
 ```txt
 v0.1: schema.sql -> Excel + Mermaid + Markdown
-v0.2: static HTML + Word export
-v0.3: AI source scanner with 9router
-v0.4: AI cache + review TODO + confidence scoring
-v0.5: live DB introspection
-v0.6: framework-specific source plugins
-v0.7: optional OpenAPI plugin
+v0.2: static HTML + Word + i18n labels
+v0.3: live DB introspection
+v0.4: framework-specific source plugins
+v0.5: optional OpenAPI plugin
 v1.0: stable plugin API and npm public release
 ```
