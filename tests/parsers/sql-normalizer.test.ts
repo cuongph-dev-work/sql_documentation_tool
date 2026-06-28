@@ -31,7 +31,8 @@ describe("normalizeSqlAst", () => {
       type: "serial",
       nullable: true,
       isPrimaryKey: false,
-      isForeignKey: false
+      isForeignKey: false,
+      isUnique: false
     });
     expect(doc.tables[0].primaryKeys).toEqual([]);
     expect(doc.tables[0].foreignKeys).toEqual([]);
@@ -173,6 +174,10 @@ describe("normalizeSqlAst", () => {
 
     const doc = normalizeSqlAst(ast, "postgres");
 
-    expect(doc.tables[0].columns[0].defaultValue).toBeUndefined();
+    expect(doc.tables[0].columns[0]).toMatchObject({
+      type: "varchar(255)",
+      size: "255",
+      defaultValue: undefined
+    });
   });
 });

@@ -26,12 +26,16 @@ describe("generateDbDocs", () => {
         "database_dictionary.xlsx",
         "database_document.docx",
         "er_diagram.mmd",
+        "er_diagram.png",
+        "ER_DIAGRAM.md",
         "html",
         "tables"
       ])
     );
     await expect(stat(join(outDir, "DATABASE.md"))).rejects.toThrow();
     await expect(stat(join(outDir, "html", "index.html"))).resolves.toMatchObject({ size: expect.any(Number) });
+    await expect(stat(join(outDir, "html", "er-diagram.html"))).resolves.toMatchObject({ size: expect.any(Number) });
+    await expect(stat(join(outDir, "ER_DIAGRAM.md"))).resolves.toMatchObject({ size: expect.any(Number) });
 
     const tableMarkdown = await readFile(
       join(outDir, "tables", "users.md"),
@@ -39,8 +43,10 @@ describe("generateDbDocs", () => {
     );
     expect(tableMarkdown).toContain("## Table Info");
     expect(tableMarkdown).toContain(
-      "| Physical Name | Logical Name | Type | Required | Default Value | Notes |"
+      "| Physical Name | Logical Name | Type | Size | Required | Default Value | Min | Max | Unique | Notes |"
     );
+    expect(tableMarkdown).toContain("| email |  | varchar(255) | 255 |");
+    expect(tableMarkdown).toContain("| Yes |");
 
     const tableHtml = await readFile(
       join(outDir, "html", "tables", "users.html"),

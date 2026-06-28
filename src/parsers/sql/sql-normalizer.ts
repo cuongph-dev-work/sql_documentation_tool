@@ -6,6 +6,14 @@ import type {
   TableDoc,
   WarningDoc
 } from "../../core/model/database-doc";
+import {
+  extractCheckBounds,
+  extractColumnComment,
+  extractConstraintColumnNames,
+  hasColumnUnique,
+  normalizeColumnType,
+  stringifyCheckDefinition
+} from "./column-meta";
 
 type AnyAst = Record<string, unknown>;
 
@@ -35,7 +43,11 @@ export function normalizeSqlAst(
 
   for (const index of indexes) {
     const table = tables.find((candidate) => candidate.name === index.table);
-    table?.indexes.push(index);
+    if (!table) continue;
+    table.indexes.push(index);
+    if (index.unique) {
+      markColumnsUnique(table, index.columns, `INDEX ${index.name}`);
+    }
   }
 
   return {
@@ -63,36 +75,53 @@ function normalizeCreateTable(statement: AnyAst): TableDoc {
   };
 
   for (const definition of createDefinitions) {
-    if (definition.resource === "column") {
-      const columnName = extractDeepColumnName(definition.column);
-      const isPrimaryKey = hasPrimaryKey(definition);
-      const isNotNull = hasNotNull(definition);
+    if (definition.resource !== "column") continue;
 
-      table.columns.push({
-        name: columnName,
-        type: normalizeType(definition.definition),
-        nullable: !isNotNull && !isPrimaryKey,
-        defaultValue: extractDefaultFromDef(definition),
-        isPrimaryKey,
-        isForeignKey: false
-      });
-      if (isPrimaryKey) table.primaryKeys.push(columnName);
+    const columnName = extractDeepColumnName(definition.column);
+    const isPrimaryKey = hasPrimaryKey(definition);
+    const isNotNull = hasNotNull(definition);
+    const { type, size } = normalizeColumnType(definition.definition);
+    const check = definition.check as AnyAst | undefined;
+    const bounds = check?.definition
+      ? extractCheckBounds(check.definition, columnName)
+      : {};
+
+    const constraintNotes: string[] = [];
+    if (check?.definition) {
+      const expression = stringifyCheckDefinition(check.definition);
+      if (expression && (!bounds.minValue || !bounds.maxValue)) {
+        constraintNotes.push(`CHECK: ${expression}`);
+      }
     }
 
-    if (
-      definition.resource === "constraint" &&
-      isConstraintType(definition.constraint_type, "PRIMARY KEY")
-    ) {
+    table.columns.push({
+      name: columnName,
+      type,
+      size,
+      nullable: !isNotNull && !isPrimaryKey,
+      defaultValue: extractDefaultFromDef(definition),
+      minValue: bounds.minValue,
+      maxValue: bounds.maxValue,
+      isUnique: hasColumnUnique(definition),
+      isPrimaryKey,
+      isForeignKey: false,
+      comment: extractColumnComment(definition),
+      constraintNotes: constraintNotes.length > 0 ? constraintNotes : undefined
+    });
+    if (isPrimaryKey) table.primaryKeys.push(columnName);
+  }
+
+  for (const definition of createDefinitions) {
+    if (definition.resource !== "constraint") continue;
+
+    if (isConstraintType(definition.constraint_type, "PRIMARY KEY")) {
       table.primaryKeys = extractDeepColumnNames(definition.definition);
       for (const column of table.columns) {
         if (table.primaryKeys.includes(column.name)) column.isPrimaryKey = true;
       }
     }
 
-    if (
-      definition.resource === "constraint" &&
-      isConstraintType(definition.constraint_type, "FOREIGN KEY")
-    ) {
+    if (isConstraintType(definition.constraint_type, "FOREIGN KEY")) {
       const columns = extractDeepColumnNames(definition.definition);
       const refDef = definition.reference_definition as AnyAst | undefined;
       const referencedTable = extractTableName(refDef?.table);
@@ -110,9 +139,84 @@ function normalizeCreateTable(statement: AnyAst): TableDoc {
         if (columns.includes(column.name)) column.isForeignKey = true;
       }
     }
+
+    if (isConstraintType(definition.constraint_type, "UNIQUE")) {
+      const columns = extractConstraintColumnNames(definition.definition);
+      const label =
+        typeof definition.constraint === "string"
+          ? definition.constraint
+          : "UNIQUE";
+      markColumnsUnique(table, columns, label);
+    }
+
+    if (isConstraintType(definition.constraint_type, "CHECK")) {
+      applyTableCheckConstraint(table, definition);
+    }
   }
 
   return table;
+}
+
+function markColumnsUnique(
+  table: TableDoc,
+  columns: string[],
+  label: string
+): void {
+  const composite = columns.length > 1;
+  for (const columnName of columns) {
+    const column = table.columns.find((item) => item.name === columnName);
+    if (!column) continue;
+    column.isUnique = true;
+    if (composite) {
+      addConstraintNote(
+        column,
+        `UNIQUE (${label}: ${columns.join(", ")})`
+      );
+    }
+  }
+}
+
+function applyTableCheckConstraint(table: TableDoc, definition: AnyAst): void {
+  const expression = stringifyCheckDefinition(definition.definition);
+  if (!expression) return;
+
+  const referencedColumns = new Set<string>();
+  for (const column of table.columns) {
+    const bounds = extractCheckBounds(definition.definition, column.name);
+    if (bounds.minValue) column.minValue = bounds.minValue;
+    if (bounds.maxValue) column.maxValue = bounds.maxValue;
+    if (bounds.minValue || bounds.maxValue) {
+      referencedColumns.add(column.name);
+      continue;
+    }
+    if (expression.includes(column.name)) {
+      referencedColumns.add(column.name);
+    }
+  }
+
+  if (referencedColumns.size === 0) {
+    for (const column of table.columns) {
+      addConstraintNote(column, `CHECK: ${expression}`);
+    }
+    return;
+  }
+
+  for (const columnName of referencedColumns) {
+    const column = table.columns.find((item) => item.name === columnName);
+    if (!column) continue;
+    if (!column.minValue && !column.maxValue) {
+      addConstraintNote(column, `CHECK: ${expression}`);
+    }
+  }
+}
+
+function addConstraintNote(
+  column: TableDoc["columns"][number],
+  note: string
+): void {
+  const notes = column.constraintNotes ?? [];
+  if (!notes.includes(note)) notes.push(note);
+  column.constraintNotes = notes;
 }
 
 function normalizeCreateIndex(statement: AnyAst): IndexDoc {
@@ -208,16 +312,6 @@ function extractDeepColumnName(value: unknown): string {
 function extractDeepColumnNames(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => extractDeepColumnName(item));
-}
-
-function normalizeType(value: unknown): string {
-  if (typeof value === "object" && value !== null) {
-    const object = value as Record<string, unknown>;
-    return String(
-      object.dataType ?? object.type ?? object.name ?? "unknown"
-    ).toLowerCase();
-  }
-  return String(value ?? "unknown").toLowerCase();
 }
 
 function hasPrimaryKey(def: AnyAst): boolean {

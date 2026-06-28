@@ -18,12 +18,17 @@ export const reviewTodoSchema = z.object({
 export const columnDocSchema = z.object({
   name: z.string().min(1),
   type: z.string().min(1),
+  size: z.string().optional(),
   nullable: z.boolean(),
   defaultValue: z.string().optional(),
+  minValue: z.string().optional(),
+  maxValue: z.string().optional(),
+  isUnique: z.boolean(),
   isPrimaryKey: z.boolean(),
   isForeignKey: z.boolean(),
   comment: z.string().optional(),
-  description: enrichedTextSchema.optional()
+  description: enrichedTextSchema.optional(),
+  constraintNotes: z.array(z.string()).optional()
 });
 
 export const foreignKeyDocSchema = z.object({

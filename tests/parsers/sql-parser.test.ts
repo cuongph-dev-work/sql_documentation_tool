@@ -11,6 +11,14 @@ describe("parseSqlSchema", () => {
     expect(
       doc.tables.find((table) => table.name === "users")?.primaryKeys
     ).toEqual(["id"]);
+    const email = doc.tables
+      .find((table) => table.name === "users")
+      ?.columns.find((column) => column.name === "email");
+    expect(email).toMatchObject({
+      type: "varchar(255)",
+      size: "255",
+      isUnique: true
+    });
     expect(
       doc.tables.find((table) => table.name === "orders")?.foreignKeys[0]
     ).toMatchObject({

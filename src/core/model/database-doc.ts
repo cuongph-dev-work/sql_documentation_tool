@@ -33,12 +33,17 @@ export type ReviewTodo = {
 export type ColumnDoc = {
   name: string;
   type: string;
+  size?: string;
   nullable: boolean;
   defaultValue?: string;
+  minValue?: string;
+  maxValue?: string;
+  isUnique: boolean;
   isPrimaryKey: boolean;
   isForeignKey: boolean;
   comment?: string;
   description?: EnrichedText;
+  constraintNotes?: string[];
 };
 
 export type ForeignKeyDoc = {

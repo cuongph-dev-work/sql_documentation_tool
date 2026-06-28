@@ -8,7 +8,8 @@ import {
   TableCell,
   TableRow,
   TextRun,
-  HeadingLevel
+  HeadingLevel,
+  ImageRun
 } from "docx";
 import type { OutputLanguage } from "../../core/config/schema";
 import type {
@@ -16,6 +17,12 @@ import type {
   TableDoc
 } from "../../core/model/database-doc";
 import { getOutputLabels } from "../shared/output-labels";
+import {
+  columnDefinitionHeaders,
+  columnDefinitionRow
+} from "../shared/column-definition";
+import { getErDiagramMermaid } from "../diagram/er-diagram-embed";
+import { renderErDiagramPng } from "../diagram/er-diagram-svg";
 
 export type WordExportOptions = {
   outDir: string;
@@ -65,6 +72,59 @@ export async function exportWordDocument(
         children: [new TextRun(`${labels.relationshipsLabel}: ${doc.relationships.length}`)]
       })
     );
+
+    // ER Diagram section
+    if (doc.tables.length > 0) {
+      children.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [new TextRun(labels.erDiagramHeading)]
+        })
+      );
+
+      try {
+        const png = await renderErDiagramPng(doc);
+        await writeFile(join(options.outDir, "er_diagram.png"), png);
+        children.push(
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data: png,
+                transformation: {
+                  width: 620,
+                  height: Math.min(480, 160 + doc.tables.length * 10)
+                },
+                type: "png"
+              })
+            ]
+          })
+        );
+      } catch {
+        children.push(
+          new Paragraph({
+            children: [new TextRun(labels.viewErDiagram)]
+          })
+        );
+      }
+
+      const mermaid = getErDiagramMermaid(doc);
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: "Mermaid source", bold: true })]
+        })
+      );
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: mermaid,
+              font: "Courier New",
+              size: 18
+            })
+          ]
+        })
+      );
+    }
 
     // Table List section
     children.push(
@@ -371,14 +431,7 @@ function renderColumnsTable(
   table: TableDoc,
   labels: ReturnType<typeof getOutputLabels>
 ): Table {
-  const headerCells = [
-    labels.physicalName,
-    labels.logicalName,
-    labels.type,
-    labels.required,
-    labels.defaultValue,
-    labels.notes
-  ].map(
+  const headerCells = columnDefinitionHeaders(labels).map(
     (h) =>
       new TableCell({
         children: [
@@ -392,40 +445,12 @@ function renderColumnsTable(
   for (const col of table.columns) {
     colRows.push(
       new TableRow({
-        children: [
-          new TableCell({
-            children: [new Paragraph({ children: [new TextRun(col.name)] })]
-          }),
-          new TableCell({
-            children: [
-              new Paragraph({ children: [new TextRun(col.comment ?? "")] })
-            ]
-          }),
-          new TableCell({
-            children: [new Paragraph({ children: [new TextRun(col.type)] })]
-          }),
-          new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun(col.nullable ? labels.no : labels.yes)]
-              })
-            ]
-          }),
-          new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun(col.defaultValue ?? "-")]
-              })
-            ]
-          }),
-          new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun(col.description?.value ?? "")]
-              })
-            ]
-          }),
-        ]
+        children: columnDefinitionRow(col, labels).map(
+          (value) =>
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun(value)] })]
+            })
+        )
       })
     );
   }

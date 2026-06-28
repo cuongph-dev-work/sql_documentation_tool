@@ -4,6 +4,14 @@ import type { OutputLanguage } from "../../core/config/schema";
 import type { DatabaseDoc, TableDoc } from "../../core/model/database-doc";
 import { sanitizeFilename } from "../../core/sanitize";
 import { getOutputLabels } from "../shared/output-labels";
+import {
+  columnDefinitionHeaders,
+  columnDefinitionRow
+} from "../shared/column-definition";
+import {
+  getErDiagramMermaid,
+  renderErDiagramHtmlPage
+} from "../diagram/er-diagram-embed";
 
 export type HtmlExportOptions = {
   outDir: string;
@@ -26,6 +34,16 @@ export async function exportHtmlDocs(
       renderIndexPage(doc, labels),
       "utf8"
     );
+
+    // ER diagram page (Mermaid interactive)
+    if (doc.tables.length > 0) {
+      const mermaid = getErDiagramMermaid(doc);
+      await writeFile(
+        join(htmlDir, "er-diagram.html"),
+        renderErDiagramHtmlPage(mermaid, labels),
+        "utf8"
+      );
+    }
 
     // per-table pages
     for (const table of doc.tables) {
@@ -153,6 +171,7 @@ function renderIndexPage(
     <div class="summary-item"><div class="num">${doc.relationships.length}</div><div class="lbl">${esc(labels.relationshipsLabel)}</div></div>
     <div class="summary-item"><div class="num">${doc.dialect}</div><div class="lbl">${esc(labels.dialectLabel)}</div></div>
   </div>
+  <p class="back"><a href="er-diagram.html">${esc(labels.erDiagramHeading)} →</a></p>
   <h2>${esc(labels.tableListHeading)}</h2>
   <table class="table-list">
     <thead><tr>
@@ -206,14 +225,10 @@ function renderTablePage(
       ? `<span class="badge badge-fk">FK</span>`
       : "";
     const rowClass = col.isPrimaryKey ? "pk" : col.isForeignKey ? "fk" : "";
-    const required = col.nullable ? labels.no : labels.yes;
+    const cells = columnDefinitionRow(col, labels);
     colRows += `      <tr${rowClass ? ` class="${rowClass}"` : ""}>`
-      + `<td>${esc(col.name)}${pkBadge}${fkBadge}</td>`
-      + `<td>${esc(col.comment ?? "")}</td>`
-      + `<td>${esc(col.type)}</td>`
-      + `<td>${required}</td>`
-      + `<td>${esc(col.defaultValue ?? "-")}</td>`
-      + `<td>${esc(col.description?.value ?? "")}</td>`
+      + `<td>${esc(cells[0] ?? "")}${pkBadge}${fkBadge}</td>`
+      + cells.slice(1).map((cell) => `<td>${esc(cell)}</td>`).join("")
       + `</tr>\n`;
   }
 
@@ -235,12 +250,7 @@ function renderTablePage(
   <h2>${esc(labels.columnsHeading)}</h2>
   <table class="columns">
     <thead><tr>
-      <th>${esc(labels.physicalName)}</th>
-      <th>${esc(labels.logicalName)}</th>
-      <th>${esc(labels.type)}</th>
-      <th>${esc(labels.required)}</th>
-      <th>${esc(labels.defaultValue)}</th>
-      <th>${esc(labels.notes)}</th>
+      ${columnDefinitionHeaders(labels).map((header) => `<th>${esc(header)}</th>`).join("\n      ")}
     </tr></thead>
     <tbody>
 ${colRows}    </tbody>

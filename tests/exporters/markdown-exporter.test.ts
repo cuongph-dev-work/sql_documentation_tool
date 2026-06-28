@@ -17,7 +17,8 @@ const doc: DatabaseDoc = {
           type: "integer",
           nullable: false,
           isPrimaryKey: true,
-          isForeignKey: false
+          isForeignKey: false,
+          isUnique: false
         },
         {
           name: "email",
@@ -25,6 +26,7 @@ const doc: DatabaseDoc = {
           nullable: false,
           isPrimaryKey: false,
           isForeignKey: false,
+          isUnique: true,
           comment: "user email address"
         }
       ],
@@ -59,6 +61,11 @@ describe("exportMarkdownDocs", () => {
     await expect(stat(join(dir, "DATABASE.md"))).rejects.toThrow();
     await expect(stat(join(dir, "html", "index.html"))).rejects.toThrow();
     expect(await readdir(dir)).toContain("tables");
+    expect(await readdir(dir)).toContain("ER_DIAGRAM.md");
+
+    const erContent = await readFile(join(dir, "ER_DIAGRAM.md"), "utf8");
+    expect(erContent).toContain("```mermaid");
+    expect(erContent).toContain("erDiagram");
 
     const tableContent = await readFile(
       join(dir, "tables", "users.md"),
@@ -71,10 +78,10 @@ describe("exportMarkdownDocs", () => {
     expect(tableContent).toContain("| テーブル論理名 | Users table |");
     expect(tableContent).toContain("## Columns");
     expect(tableContent).toContain(
-      "| 物理名 | 論理名 | 型 | 必須 | デフォルト値 | 備考 |"
+      "| 物理名 | 論理名 | 型 | 桁数 | 必須 | デフォルト値 | 最小値 | 最大値 | 一意 | 備考 |"
     );
     expect(tableContent).toContain(
-      "| email | user email address | varchar | Yes | - |  |"
+      "| email | user email address | varchar | (none) | Yes | (none) | (none) | (none) | Yes | (none) |"
     );
 
     await rm(dir, { recursive: true, force: true });
@@ -91,7 +98,7 @@ describe("exportMarkdownDocs", () => {
     expect(defaultContent).toContain("| Field | Value |");
     expect(defaultContent).toContain("| Table Physical Name | users |");
     expect(defaultContent).toContain(
-      "| Physical Name | Logical Name | Type | Required | Default Value | Notes |"
+      "| Physical Name | Logical Name | Type | Size | Required | Default Value | Min | Max | Unique | Notes |"
     );
 
     await exportMarkdownDocs(doc, { outDir: dir, language: "jp" });
@@ -100,7 +107,7 @@ describe("exportMarkdownDocs", () => {
     expect(jpContent).toContain("| 項目 | 値 |");
     expect(jpContent).toContain("| テーブル物理名 | users |");
     expect(jpContent).toContain(
-      "| 物理名 | 論理名 | 型 | 必須 | デフォルト値 | 備考 |"
+      "| 物理名 | 論理名 | 型 | 桁数 | 必須 | デフォルト値 | 最小値 | 最大値 | 一意 | 備考 |"
     );
 
     await rm(dir, { recursive: true, force: true });

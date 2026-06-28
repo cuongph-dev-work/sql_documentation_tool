@@ -1,9 +1,18 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import ExcelJS from "exceljs";
 import type { OutputLanguage } from "../../core/config/schema";
 import type { DatabaseDoc, TableDoc } from "../../core/model/database-doc";
 import { getOutputLabels, type OutputLabels } from "../shared/output-labels";
+import {
+  A5_COLUMN_COUNT,
+  columnDefinitionHeaders,
+  columnDefinitionRow
+} from "../shared/column-definition";
+import {
+  getErDiagramMermaid
+} from "../diagram/er-diagram-embed";
+import { renderErDiagramPng } from "../diagram/er-diagram-svg";
 
 const COLOR = {
   headerBg: "FF4472C4",
@@ -41,6 +50,10 @@ export async function exportExcelDictionary(
   }
 
   addOverviewSheet(workbook, doc, labels, sheetNames);
+
+  if (doc.tables.length > 0) {
+    await addErDiagramSheet(workbook, doc, labels, options.outDir);
+  }
 
   for (const table of doc.tables) {
     const sheetName = sheetNames.get(table.name)!;
@@ -161,6 +174,64 @@ function addOverviewSheet(
   sheet.views = [{ state: "frozen", ySplit: headerRowNum }];
 }
 
+// ── ER Diagram sheet ──────────────────────────────────────────────────────────
+
+async function addErDiagramSheet(
+  workbook: ExcelJS.Workbook,
+  doc: DatabaseDoc,
+  labels: OutputLabels,
+  outDir: string
+) {
+  const sheet = workbook.addWorksheet(labels.erDiagramSheet);
+
+  sheet.mergeCells(1, 1, 1, 6);
+  const titleCell = sheet.getCell(1, 1);
+  titleCell.value = labels.erDiagramHeading;
+  titleCell.font = { bold: true, size: 14, color: { argb: COLOR.overviewFg } };
+  titleCell.fill = solidFill(COLOR.overviewBg);
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  sheet.getRow(1).height = 28;
+
+  let nextRow = 3;
+
+  try {
+    const png = await renderErDiagramPng(doc);
+    await writeFile(join(outDir, "er_diagram.png"), png);
+    const imageId = workbook.addImage({
+      base64: png.toString("base64"),
+      extension: "png"
+    });
+    sheet.addImage(imageId, {
+      tl: { col: 0, row: 2 },
+      ext: { width: 900, height: Math.min(650, 120 + doc.tables.length * 12) }
+    });
+    nextRow = Math.max(28, Math.ceil(doc.tables.length / 4) * 8 + 6);
+  } catch {
+    sheet.getCell(3, 1).value = labels.viewErDiagram;
+    nextRow = 5;
+  }
+
+  const mermaid = getErDiagramMermaid(doc);
+  sheet.getCell(nextRow, 1).value = "Mermaid source";
+  sheet.getCell(nextRow, 1).font = { bold: true, color: { argb: COLOR.metaFg } };
+  nextRow += 1;
+
+  sheet.mergeCells(nextRow, 1, nextRow + 20, 6);
+  const sourceCell = sheet.getCell(nextRow, 1);
+  sourceCell.value = mermaid;
+  sourceCell.alignment = { wrapText: true, vertical: "top" };
+  sourceCell.font = { name: "Courier New", size: 9 };
+
+  sheet.columns = [
+    { width: 24 },
+    { width: 24 },
+    { width: 24 },
+    { width: 24 },
+    { width: 24 },
+    { width: 24 }
+  ];
+}
+
 // ── Per-table sheet ───────────────────────────────────────────────────────────
 
 function populateTableSheet(
@@ -228,57 +299,45 @@ function populateTableSheet(
   sheet.addRow([]);
 
   // Column definition header
-  const headerRow = sheet.addRow([
-    labels.physicalName,
-    labels.logicalName,
-    labels.type,
-    labels.required,
-    labels.defaultValue,
-    labels.notes,
-  ]);
+  const headerRow = sheet.addRow(columnDefinitionHeaders(labels));
   styleColorRow(headerRow, COLOR.headerBg, COLOR.headerFg);
-  applyBorderToRow(headerRow, 6);
+  applyBorderToRow(headerRow, A5_COLUMN_COUNT);
 
   const headerRowNum = headerRow.number;
 
   // Column data rows
   for (const [i, column] of table.columns.entries()) {
-    const markers: string[] = [];
-    if (column.isPrimaryKey) markers.push(labels.pkMarker);
-    if (column.isForeignKey) markers.push(labels.fkMarker);
-    const notes = [markers.join(", "), column.description?.value ?? ""]
-      .filter(Boolean)
-      .join(" | ");
-
-    const row = sheet.addRow([
-      column.name,
-      displayValue(column.comment, labels),
-      column.type,
-      column.nullable ? labels.no : labels.yes,
-      column.defaultValue ?? "-",
-      notes || "-",
-    ]);
+    const row = sheet.addRow(
+      columnDefinitionRow(column, labels).map((value, index) =>
+        index === 1 ? displayValue(value, labels) : value
+      )
+    );
 
     if (column.isPrimaryKey) {
-      shadeRow(row, 6, COLOR.pkBg);
+      shadeRow(row, A5_COLUMN_COUNT, COLOR.pkBg);
       row.getCell(1).font = { bold: true };
     } else if (column.isForeignKey) {
-      shadeRow(row, 6, COLOR.fkBg);
+      shadeRow(row, A5_COLUMN_COUNT, COLOR.fkBg);
     } else if (i % 2 === 1) {
-      shadeRow(row, 6, COLOR.altRow);
+      shadeRow(row, A5_COLUMN_COUNT, COLOR.altRow);
     }
 
-    row.getCell(4).alignment = { horizontal: "center" };
-    applyBorderToRow(row, 6);
+    row.getCell(5).alignment = { horizontal: "center" };
+    row.getCell(9).alignment = { horizontal: "center" };
+    applyBorderToRow(row, A5_COLUMN_COUNT);
   }
 
   sheet.columns = [
+    { width: 22 },
     { width: 24 },
-    { width: 28 },
-    { width: 18 },
+    { width: 16 },
     { width: 10 },
-    { width: 18 },
-    { width: 36 },
+    { width: 8 },
+    { width: 14 },
+    { width: 8 },
+    { width: 8 },
+    { width: 8 },
+    { width: 28 },
   ];
 
   sheet.views = [{ state: "frozen", ySplit: headerRowNum }];

@@ -4,6 +4,14 @@ import type { OutputLanguage } from "../../core/config/schema";
 import type { DatabaseDoc, TableDoc } from "../../core/model/database-doc";
 import { sanitizeFilename } from "../../core/sanitize";
 import { getOutputLabels } from "../shared/output-labels";
+import {
+  columnDefinitionHeaders,
+  columnDefinitionRow
+} from "../shared/column-definition";
+import {
+  getErDiagramMermaid,
+  renderErDiagramMarkdown
+} from "../diagram/er-diagram-embed";
 
 export type MarkdownExportOptions = {
   outDir: string;
@@ -18,6 +26,15 @@ export async function exportMarkdownDocs(
     const tablesDir = join(options.outDir, "tables");
     await mkdir(tablesDir, { recursive: true });
     const labels = getOutputLabels(options.language);
+
+    if (doc.tables.length > 0) {
+      const mermaid = getErDiagramMermaid(doc);
+      await writeFile(
+        join(options.outDir, "ER_DIAGRAM.md"),
+        renderErDiagramMarkdown(mermaid, labels),
+        "utf8"
+      );
+    }
 
     for (const table of doc.tables) {
       await writeFile(
@@ -82,13 +99,13 @@ function renderTableDoc(
   lines.push(`## ${labels.columnsHeading}`);
   lines.push("");
   lines.push(
-    `| ${labels.physicalName} | ${labels.logicalName} | ${labels.type} | ${labels.required} | ${labels.defaultValue} | ${labels.notes} |`
+    `| ${columnDefinitionHeaders(labels).join(" | ")} |`
   );
-  lines.push("|--------|--------|----|------|--------------|------|");
+  lines.push(`|${columnDefinitionHeaders(labels).map(() => "--------").join("|")}|`);
 
   for (const col of table.columns) {
     lines.push(
-      `| ${escapeMd(col.name)} | ${escapeMd(col.comment ?? "")} | ${escapeMd(col.type)} | ${col.nullable ? labels.no : labels.yes} | ${escapeMd(col.defaultValue ?? "-")} | ${escapeMd(col.description?.value ?? "")} |`
+      `| ${columnDefinitionRow(col, labels).map((value) => escapeMd(value)).join(" | ")} |`
     );
   }
   lines.push("");

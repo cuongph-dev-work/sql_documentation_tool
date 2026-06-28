@@ -50,11 +50,17 @@ describe("exportHtmlDocs", () => {
       size: expect.any(Number)
     });
     expect(await readdir(join(dir, "html"))).toContain("tables");
+    expect(await readdir(join(dir, "html"))).toContain("er-diagram.html");
 
     // index page content
     const indexContent = await readFile(join(dir, "html", "index.html"), "utf8");
+    expect(indexContent).toContain("er-diagram.html");
     expect(indexContent).toContain("users");
     expect(indexContent).toContain("tables/users.html");
+
+    const erPage = await readFile(join(dir, "html", "er-diagram.html"), "utf8");
+    expect(erPage).toContain('class="mermaid"');
+    expect(erPage).toContain("erDiagram");
 
     const tableContent = await readFile(
       join(dir, "html", "tables", "users.html"),

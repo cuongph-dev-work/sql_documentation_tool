@@ -14,7 +14,8 @@ describe("databaseDocSchema", () => {
               type: "integer",
               nullable: false,
               isPrimaryKey: true,
-              isForeignKey: false
+              isForeignKey: false,
+              isUnique: false
             }
           ],
           primaryKeys: ["id"],

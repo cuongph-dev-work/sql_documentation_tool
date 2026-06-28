@@ -18,6 +18,10 @@ export type OutputLabels = {
   type: string;
   required: string;
   defaultValue: string;
+  size: string;
+  minValue: string;
+  maxValue: string;
+  unique: string;
   notes: string;
   yes: string;
   no: string;
@@ -47,6 +51,14 @@ export type OutputLabels = {
   backToOverview: string;
   pkMarker: string;
   fkMarker: string;
+  erDiagramHeading: string;
+  erDiagramSheet: string;
+  viewErDiagram: string;
+  zoomIn: string;
+  zoomOut: string;
+  zoomReset: string;
+  zoomFit: string;
+  panZoomHint: string;
 };
 
 const LABELS: Record<OutputLanguage, OutputLabels> = {
@@ -68,6 +80,10 @@ const LABELS: Record<OutputLanguage, OutputLabels> = {
     type: "Type",
     required: "Required",
     defaultValue: "Default Value",
+    size: "Size",
+    minValue: "Min",
+    maxValue: "Max",
+    unique: "Unique",
     notes: "Notes",
     yes: "Yes",
     no: "No",
@@ -96,7 +112,15 @@ const LABELS: Record<OutputLanguage, OutputLabels> = {
     rowNo: "#",
     backToOverview: "← Overview",
     pkMarker: "PK",
-    fkMarker: "FK"
+    fkMarker: "FK",
+    erDiagramHeading: "ER Diagram",
+    erDiagramSheet: "ER Diagram",
+    viewErDiagram: "View interactive ER diagram (html/er-diagram.html)",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    zoomReset: "Reset",
+    zoomFit: "Fit",
+    panZoomHint: "Drag to pan · Scroll to zoom"
   },
   jp: {
     docTitle: "Database Documentation",
@@ -116,6 +140,10 @@ const LABELS: Record<OutputLanguage, OutputLabels> = {
     type: "型",
     required: "必須",
     defaultValue: "デフォルト値",
+    size: "桁数",
+    minValue: "最小値",
+    maxValue: "最大値",
+    unique: "一意",
     notes: "備考",
     yes: "Yes",
     no: "No",
@@ -144,7 +172,15 @@ const LABELS: Record<OutputLanguage, OutputLabels> = {
     rowNo: "No.",
     backToOverview: "← 一覧",
     pkMarker: "PK",
-    fkMarker: "FK"
+    fkMarker: "FK",
+    erDiagramHeading: "ER Diagram",
+    erDiagramSheet: "ER Diagram",
+    viewErDiagram: "インタラクティブER図 (html/er-diagram.html)",
+    zoomIn: "拡大",
+    zoomOut: "縮小",
+    zoomReset: "リセット",
+    zoomFit: "全体表示",
+    panZoomHint: "ドラッグで移動 · スクロールで拡大縮小"
   }
 };
 
